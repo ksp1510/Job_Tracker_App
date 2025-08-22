@@ -26,6 +26,7 @@ public class AuthController {
     @PostMapping("/register")
     public User register(@RequestBody RegisterRequest request) {
         User user = new User();
+        user.setName(request.getFirstName() + " " + request.getLastName());
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // hash password
@@ -45,6 +46,8 @@ public class AuthController {
     // --- DTOs ---
     @Data
     static class RegisterRequest {
+        private String firstName;
+        private String lastName;
         private String email;
         private String password;
         private String role; // e.g., "ADMIN" or "USER"
