@@ -33,19 +33,19 @@ public class ApplicationService {
 
     public Application update(String id, Application appDetails) {
         return repository.findById(id).map(app -> {
-            app.setCompanyName(appDetails.getCompanyName());
-            app.setJobTitle(appDetails.getJobTitle());
-            app.setJobDescription(appDetails.getJobDescription());
-            app.setJobLink(appDetails.getJobLink());
-            app.setRecruiterContact(appDetails.getRecruiterContact());
-            app.setStatus(appDetails.getStatus());
-            app.setSalary(appDetails.getSalary());
-            app.setNotes(appDetails.getNotes());
-            app.setResumeId(appDetails.getResumeId());
-            app.setCoverLetterId(appDetails.getCoverLetterId());
-            app.setAppliedDate(appDetails.getAppliedDate());
-            app.setLastFollowUpDate(appDetails.getLastFollowUpDate());
-            app.setReferral(appDetails.getReferral());
+            if (appDetails.getCompanyName() != null) app.setCompanyName(appDetails.getCompanyName());
+            if (appDetails.getJobTitle() != null) app.setJobTitle(appDetails.getJobTitle());
+            if (appDetails.getJobDescription() != null) app.setJobDescription(appDetails.getJobDescription());
+            if (appDetails.getJobLink() != null) app.setJobLink(appDetails.getJobLink());
+            if (appDetails.getRecruiterContact() != null) app.setRecruiterContact(appDetails.getRecruiterContact());
+            if (appDetails.getStatus() != null) app.setStatus(appDetails.getStatus());
+            if (appDetails.getSalary() != null) app.setSalary(appDetails.getSalary());
+            if (appDetails.getNotes() != null) app.setNotes(appDetails.getNotes());
+            if (appDetails.getResumeId() != null) app.setResumeId(appDetails.getResumeId());
+            if (appDetails.getCoverLetterId() != null) app.setCoverLetterId(appDetails.getCoverLetterId());
+            if (appDetails.getAppliedDate() != null) app.setAppliedDate(appDetails.getAppliedDate());
+            if (appDetails.getLastFollowUpDate() != null) app.setLastFollowUpDate(appDetails.getLastFollowUpDate());
+            if (appDetails.getReferral() != null) app.setReferral(appDetails.getReferral());
             return repository.save(app);
         }).orElseThrow(() -> new RuntimeException("Application not found: " + id));
     }
