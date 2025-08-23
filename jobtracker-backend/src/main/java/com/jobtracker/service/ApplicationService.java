@@ -53,4 +53,16 @@ public class ApplicationService {
     public void delete(String id) {
         repository.deleteById(id);
     }
+
+    public void fileDeleted(String applicationId, String fileType) {
+        repository.findById(applicationId).map(app -> {
+            if ("Resume".equalsIgnoreCase(fileType)) {
+                app.setResumeId(null);
+            } else if ("CoverLetter".equalsIgnoreCase(fileType)) {
+                app.setCoverLetterId(null);
+            }
+            return repository.save(app);
+        }).orElseThrow(() -> new RuntimeException("Application not found: " + applicationId));
+    }
+    
 }

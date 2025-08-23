@@ -3,6 +3,10 @@ package com.jobtracker.controller;
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Files;
 import com.jobtracker.service.S3Service;
+
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.SdkClientException;
+
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.config.FileNameUtil;
 import com.jobtracker.repository.FileRepository;
@@ -13,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.time.Duration;
 import java.time.Instant;
 
 @RestController
@@ -120,8 +125,43 @@ public ResponseEntity<String> uploadResume(
 
         s3Service.deleteFile(bucketName, key);
         fileRepository.deleteById(id);
+        applicationService.fileDeleted(fileMeta.getApplicationId(), fileMeta.getType());
 
         return ResponseEntity.ok("Deleted: " + fileMeta.getFileName());
     }
+
+    @GetMapping("/download/{id}")
+    public ResponseEntity<byte[]> downloadFile(@PathVariable String id) {
+        Files fileMeta = fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        // Extract S3 key from filePath
+        String key = fileMeta.getFilePath().replace("s3://" + bucketName + "/", "");
+
+        byte[] content = null;
+        try {
+            content = s3Service.download(bucketName, key);
+        } catch (AwsServiceException | SdkClientException | IOException e) {
+            e.printStackTrace();
+        }
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + fileMeta.getFileName() + ".pdf\"")
+                .body(content);
+    }
+
+    @GetMapping("/presigned/{id}")
+    public ResponseEntity<String> getPresignedUrl(@PathVariable String id) {
+        Files fileMeta = fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        String key = fileMeta.getFilePath().replace("s3://" + bucketName + "/", "");
+
+        // Generate a presigned URL valid for 1 hour
+        String url = s3Service.generatePresignedUrl(bucketName, key, Duration.ofHours(1)).toString();
+
+        return ResponseEntity.ok(url);
+    }
+
 
 }
