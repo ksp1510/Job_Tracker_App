@@ -22,5 +22,5 @@ public class User {
     private String email;
     private String passwordHash;
     private String role; // admin | user
-    private Instant createdAt = Instant.now();
+    private final Instant createdAt = Instant.now();
 }

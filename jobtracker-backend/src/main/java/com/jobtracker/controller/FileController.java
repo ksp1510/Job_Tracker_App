@@ -114,6 +114,16 @@ public ResponseEntity<String> uploadResume(
         return ResponseEntity.ok(fileRepository.findByUserId(userId));
     }
 
+    @GetMapping("/applications/{applicationId}/files")
+    public ResponseEntity<List<Files>> getFilesByApplication(@PathVariable String applicationId) {
+        List<Files> files = fileRepository.findByApplicationId(applicationId);
+        if (files.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(files);
+}
+
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteFile(@PathVariable String id) {
         Files fileMeta = fileRepository.findById(id)

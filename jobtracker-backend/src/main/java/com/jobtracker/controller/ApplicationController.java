@@ -1,7 +1,13 @@
 package com.jobtracker.controller;
 
 import com.jobtracker.model.Application;
+import com.jobtracker.model.Files;
+import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 import com.jobtracker.config.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +20,12 @@ public class ApplicationController {
 
     private final ApplicationService service;
     private final JwtUtil jwtUtil;
+    private final FileRepository fileRepository;
 
-    public ApplicationController(ApplicationService service, JwtUtil jwtUtil) {
+    public ApplicationController(ApplicationService service, JwtUtil jwtUtil, FileRepository fileRepository) {
         this.service = service;
         this.jwtUtil = jwtUtil;
+        this.fileRepository = fileRepository;
     }
 
     // 🔹 Create new application
@@ -60,5 +68,23 @@ public class ApplicationController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/with-files")
+    public ResponseEntity<ApplicationResponse> getApplicationWithFiles(@PathVariable String id) {
+        Application app = service.getById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+
+        List<Files> files = fileRepository.findByApplicationId(id);
+
+        return ResponseEntity.ok(new ApplicationResponse(app, files));
+    }
+
+
+    @Data
+    @AllArgsConstructor
+    static class ApplicationResponse {
+        private Application application;
+        private List<Files> files;
     }
 }
