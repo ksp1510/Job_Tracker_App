@@ -35,6 +35,7 @@ public class ApplicationService {
         return repository.findById(id).map(app -> {
             if (appDetails.getCompanyName() != null) app.setCompanyName(appDetails.getCompanyName());
             if (appDetails.getJobTitle() != null) app.setJobTitle(appDetails.getJobTitle());
+            if (appDetails.getJobLocation() != null) app.setJobLocation(appDetails.getJobLocation());
             if (appDetails.getJobDescription() != null) app.setJobDescription(appDetails.getJobDescription());
             if (appDetails.getJobLink() != null) app.setJobLink(appDetails.getJobLink());
             if (appDetails.getRecruiterContact() != null) app.setRecruiterContact(appDetails.getRecruiterContact());

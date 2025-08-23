@@ -25,6 +25,9 @@ public class Application {
     
     @NotBlank(message = "Job Title is required")
     private String jobTitle;
+
+    @NotBlank(message = "Job Location is required")
+    private String jobLocation;
     
     @NotBlank(message = "Job Description is required")
     private String jobDescription;
