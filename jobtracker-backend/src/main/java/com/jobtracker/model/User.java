@@ -43,7 +43,10 @@ public class User {
     private String role; // admin | user
     private final Instant createdAt = Instant.now();
 
+    @Builder.Default
     private boolean notificationEnabled = true;
+    @Builder.Default
     private boolean emailNotificationsEnabled = true;
+    @Builder.Default
     private boolean inAppNotificationsEnabled = true;
 }
