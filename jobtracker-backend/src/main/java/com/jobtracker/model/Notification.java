@@ -4,7 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Document(collection = "notifications")
@@ -16,7 +16,7 @@ public class Notification {
     private String userId;           // owner of the notification
     private String applicationId;    // optional link to application
     private String message;          // "Follow up on Google interview"
-    private LocalDateTime notifyAt;  // when to trigger
+    private Instant notifyAt;  // when to trigger
     private boolean sent = false;    // mark after delivery
     private boolean read = false;    // mark after reading
     private Channel channel = Channel.IN_APP; // default channel

@@ -11,6 +11,8 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("/notifications")
@@ -25,9 +27,19 @@ public class NotificationController {
     }
 
     @PostMapping
-    public ResponseEntity<Notification> create(@RequestBody Notification n) {
+    public ResponseEntity<Notification> create(@RequestBody Notification n,
+                                            @RequestParam(required = false) String reminderTime) {
+        if (reminderTime != null) {
+            try {
+                n.setNotifyAt(Instant.parse(reminderTime));
+            } catch (DateTimeParseException e) {
+                throw new RuntimeException("Invalid reminderTime format. Use ISO-8601 (e.g., 2025-08-26T13:30:00Z).");
+            }
+        }
         return ResponseEntity.ok(service.createNotification(n));
     }
+
+
 
     @GetMapping("/{userId}/all")
     public ResponseEntity<List<Notification>> getUserNotifications(@PathVariable String userId) {

@@ -6,18 +6,18 @@ import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.service.EmailService;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.time.ZoneOffset;
 
 @Service
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final EmailService emailService; // for email
 
-    public NotificationService(NotificationRepository notificationRepository, EmailService emailService) {
+    public NotificationService(NotificationRepository notificationRepository) {
         this.notificationRepository = notificationRepository;
-        this.emailService = emailService;
     }
 
     public void createFollowUpReminder(Application app, int daysUntilFollowUp) {
@@ -25,14 +25,18 @@ public class NotificationService {
         n.setUserId(app.getUserId());
         n.setApplicationId(app.getId());
         n.setMessage("Follow up on " + app.getCompanyName() + " - " + app.getJobTitle());
-        n.setNotifyAt(LocalDateTime.now().plusDays(daysUntilFollowUp));
+        n.setNotifyAt(Instant.now().plus(daysUntilFollowUp, ChronoUnit.DAYS));
         n.setSent(false);
 
         notificationRepository.save(n);
     }
 
-    public Notification createNotification(Notification notification) {
-        return notificationRepository.save(notification);
+    public Notification createNotification(Notification n) {
+        // If reminderTime was passed as string, map it to notifyAt
+        if (n.getNotifyAt() == null && n instanceof Notification) {
+            
+        }
+        return notificationRepository.save(n);
     }
 
     public List<Notification> getUserNotifications(String userId) {
@@ -40,11 +44,11 @@ public class NotificationService {
     }
 
     public void processDueNotifications() {
-        List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(LocalDateTime.now());
+        List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(Instant.now());
 
         for (Notification n : due) {
             // 1. Send via SES (email)
-            emailService.sendEmail(
+            EmailService.sendEmail(
                     "ksp1510@gmail.com",  // TODO: look up from User table
                     "Interview Reminder",
                     "Hey, don't forget your interview scheduled for tomorrow 3 PM!"
@@ -63,15 +67,15 @@ public class NotificationService {
         Notification n = new Notification();
         n.setUserId(app.getUserId());
         n.setMessage("Interview Reminder - " + app.getCompanyName());
-        n.setNotifyAt(app.getLastFollowUpDate().atStartOfDay().minusDays(1)); // remind 1 day before
+        n.setNotifyAt(app.getLastFollowUpDate().atStartOfDay().toInstant(ZoneOffset.UTC)); // remind 1 day before
         n.setSent(false);
 
         // Example: remind 1 day before interview date (assuming `lastFollowUpDate` is interview date for now)
-        LocalDateTime eventDate = app.getLastFollowUpDate() != null 
-                ? app.getLastFollowUpDate().atStartOfDay() 
-                : LocalDateTime.now().plusDays(7); // fallback
+        Instant eventDate = app.getLastFollowUpDate() != null 
+                ? app.getLastFollowUpDate().atStartOfDay().toInstant(null) 
+                : Instant.now().plus(7, ChronoUnit.DAYS); // fallback
 
-        n.setNotifyAt(eventDate.minusDays(1)); // remind 1 day before
+        n.setNotifyAt(eventDate.minus(1, ChronoUnit.DAYS)); // remind 1 day before
         n.setSent(false);
 
         notificationRepository.save(n);

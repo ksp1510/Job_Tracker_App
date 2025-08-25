@@ -2,4 +2,7 @@ node_modules/
 target/
 .idea/
 .vscode/
+jobtracker-backend/.bashrc
+jobtracker-backend/.bash_history
+
 
