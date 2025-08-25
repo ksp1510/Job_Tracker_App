@@ -50,7 +50,7 @@ public class ApplicationController {
     @GetMapping("/by-status")
     public ResponseEntity<List<Application>> getAllByStatus(
         @RequestParam String status,
-            @RequestHeader("Authorization") String authHeader) {
+        @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
         return ResponseEntity.ok(service.findByUserIdAndStatus(userId, status));

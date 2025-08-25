@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
+import com.jobtracker.config.JwtUtil;
 
 @RestController
 @RequestMapping("/files")
@@ -31,9 +32,11 @@ public class FileController {
     private final FileRepository fileRepository;
     private final ApplicationService applicationService;
     private final UserRepository userRepository;
+    private JwtUtil jwtUtil;
     
-    public FileController(S3Service s3Service, FileRepository fileRepository, ApplicationService applicationService, UserRepository userRepository) {
+    public FileController(S3Service s3Service, FileRepository fileRepository, ApplicationService applicationService, UserRepository userRepository, JwtUtil jwtUtil) {
         this.s3Service = s3Service;
+        this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
         this.applicationService = applicationService;
         this.userRepository = userRepository;
@@ -42,6 +45,7 @@ public class FileController {
     @PostMapping("/upload/resume")
     public ResponseEntity<String> uploadResume(
         @RequestParam String applicationId,
+        @RequestHeader("Authorization") String authHeader,
         @RequestParam("file") MultipartFile file) throws IOException {
 
             Application app = applicationService.getById(applicationId);
@@ -82,6 +86,7 @@ public class FileController {
     @PostMapping("/upload/coverletter")
     public ResponseEntity<String> uploadCoverLetter(
             @RequestParam String applicationId,
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam("file") MultipartFile file) throws IOException {
 
             Application app = applicationService.getById(applicationId);
@@ -118,9 +123,11 @@ public class FileController {
         return ResponseEntity.ok("Uploaded Cover Letter: " + filename + ".pdf");
     }
 
-    @GetMapping("/{userId}")
+    @GetMapping
     public ResponseEntity<List<Files>> listFiles(
-            @PathVariable String userId) {
+            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
         return ResponseEntity.ok(fileRepository.findByUserId(userId));
     }
 
