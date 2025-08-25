@@ -2,6 +2,7 @@ package com.jobtracker.controller;
 
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Files;
+import com.jobtracker.model.User;
 import com.jobtracker.service.S3Service;
 
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -10,6 +11,7 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.config.FileNameUtil;
 import com.jobtracker.repository.FileRepository;
+import com.jobtracker.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,24 +30,30 @@ public class FileController {
     private final String bucketName = "job-tracker-app-v0.1";
     private final FileRepository fileRepository;
     private final ApplicationService applicationService;
+    private final UserRepository userRepository;
     
-    public FileController(S3Service s3Service, FileRepository fileRepository, ApplicationService applicationService) {
+    public FileController(S3Service s3Service, FileRepository fileRepository, ApplicationService applicationService, UserRepository userRepository) {
         this.s3Service = s3Service;
         this.fileRepository = fileRepository;
         this.applicationService = applicationService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/upload/resume")
-public ResponseEntity<String> uploadResume(
-        @RequestParam String jobTitle,
-        @RequestParam String firstName,
-        @RequestParam String lastName,
-        @RequestParam String userId,
+    public ResponseEntity<String> uploadResume(
         @RequestParam String applicationId,
-        @RequestParam(required = false) String company,
         @RequestParam("file") MultipartFile file) throws IOException {
 
-    String filename = FileNameUtil.generate(firstName, lastName, jobTitle, company, false);
+            Application app = applicationService.getById(applicationId);
+            String userId = app.getUserId();
+            User user = userRepository.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            String firstName = user.getFirstName();
+            String lastName = user.getLastName();
+            String jobTitle = app.getJobTitle();
+            String companyName = app.getCompanyName();
+
+    String filename = FileNameUtil.generate(firstName, lastName, jobTitle, companyName, false);
     File temp = File.createTempFile("resume-", ".pdf");
     try {
         file.transferTo(temp);
@@ -64,7 +72,6 @@ public ResponseEntity<String> uploadResume(
     meta.setNotes("Uploaded by " + firstName + " " + lastName);
     fileRepository.save(meta);
 
-    Application app = new Application();
     app.setResumeId(meta.getId());
     applicationService.update(applicationId, app);
 
@@ -74,15 +81,19 @@ public ResponseEntity<String> uploadResume(
 
     @PostMapping("/upload/coverletter")
     public ResponseEntity<String> uploadCoverLetter(
-            @RequestParam String jobTitle,
-            @RequestParam String firstName,
-            @RequestParam String lastName,
-            @RequestParam String userId,
             @RequestParam String applicationId,
-            @RequestParam(required = false) String company,
             @RequestParam("file") MultipartFile file) throws IOException {
 
-        String filename = FileNameUtil.generate(firstName, lastName, jobTitle, company, false);
+            Application app = applicationService.getById(applicationId);
+            String userId = app.getUserId();
+            User user = userRepository.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            String firstName = user.getFirstName();
+            String lastName = user.getLastName();
+            String jobTitle = app.getJobTitle();
+            String companyName = app.getCompanyName();
+
+        String filename = FileNameUtil.generate(firstName, lastName, jobTitle, companyName, false);
         File temp = File.createTempFile("coverletter-", ".pdf");
         try {
             file.transferTo(temp);
@@ -101,7 +112,6 @@ public ResponseEntity<String> uploadResume(
         meta.setNotes("Uploaded by " + firstName + " " + lastName);
         fileRepository.save(meta);
 
-        Application app = new Application();
         app.setCoverLetterId(meta.getId());
         applicationService.update(applicationId, app);
 

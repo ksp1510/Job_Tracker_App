@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ApplicationRepository extends MongoRepository<Application, String> {
+    Optional<Application> findById(String id);
     List<Application> findByUserId(String userId);
     List<Application> findByStatus(String status);
     List<Application> findByUserIdAndStatus(String userId, String status);
