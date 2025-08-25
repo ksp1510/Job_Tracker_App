@@ -7,4 +7,5 @@ import java.util.List;
 public interface ApplicationRepository extends MongoRepository<Application, String> {
     List<Application> findByUserId(String userId);
     List<Application> findByStatus(String status);
+    List<Application> findByUserIdAndStatus(String userId, String status);
 }

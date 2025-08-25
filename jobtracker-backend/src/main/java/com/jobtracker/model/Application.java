@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
@@ -37,11 +37,7 @@ public class Application {
     private String jobLink;
     private String recruiterContact;
 
-    @NotBlank(message = "Status is required")
-    @Pattern(
-        regexp = "APPLIED|INTERVIEW|OFFER|REJECTED|HIRED",
-        message = "Status must be one of: APPLIED, INTERVIEW, OFFER, REJECTED, HIRED"
-    )
+    @NotNull(message = "Status is required")
     private Status status;          // Applied, Interview, Offer, Rejected
     private LocalDate appliedDate;
     private LocalDate lastFollowUpDate;

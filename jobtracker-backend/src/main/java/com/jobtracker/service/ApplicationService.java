@@ -31,6 +31,14 @@ public class ApplicationService {
         return repository.findById(id);
     }
 
+    public List<Application> findByStatus(String status) {
+        return repository.findByStatus(status);
+    }
+
+    public List<Application> findByUserIdAndStatus(String userId, String status) {
+        return repository.findByUserIdAndStatus(userId, status);
+    }
+
     public Application update(String id, Application appDetails) {
         return repository.findById(id).map(app -> {
             if (appDetails.getCompanyName() != null) app.setCompanyName(appDetails.getCompanyName());
