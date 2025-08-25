@@ -58,11 +58,15 @@ public class ApplicationController {
 
     // 🔹 Get application by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Application> getById(@Valid @PathVariable String id) {
-        return service.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Application> getById(@PathVariable String id,
+                                            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
+        return ResponseEntity.ok(service.findByIdAndUserId(id, userId));
     }
+
+
 
     // 🔹 Update application
     @PutMapping("/{id}")
@@ -80,8 +84,7 @@ public class ApplicationController {
 
     @GetMapping("/{id}/with-files")
     public ResponseEntity<ApplicationResponse> getApplicationWithFiles(@Valid @PathVariable String id) {
-        Application app = service.getById(id)
-                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+        Application app = service.getById(id);
 
         List<Files> files = fileRepository.findByApplicationId(id);
 

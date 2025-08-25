@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Service
 public class ApplicationService {
@@ -27,8 +26,14 @@ public class ApplicationService {
         return repository.findByUserId(userId);
     }
 
-    public Optional<Application> getById(String id) {
-        return repository.findById(id);
+    public Application getById(String id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    }
+
+    public Application findByIdAndUserId(String id, String userId) {
+        return repository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
     }
 
     public List<Application> findByStatus(String status) {
