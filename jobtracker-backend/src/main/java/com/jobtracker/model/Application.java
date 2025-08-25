@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Document(collection = "applications")
@@ -41,6 +42,9 @@ public class Application {
     private Status status;          // Applied, Interview, Offer, Rejected
     private LocalDate appliedDate;
     private LocalDate lastFollowUpDate;
+
+    private LocalDateTime interviewDate;
+    private LocalDateTime assessmentDate;
     
     private String resumeId;        // reference to resume used
     private String coverLetterId;

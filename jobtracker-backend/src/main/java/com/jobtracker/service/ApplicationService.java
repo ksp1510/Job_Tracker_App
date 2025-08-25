@@ -1,6 +1,7 @@
 package com.jobtracker.service;
 
 import com.jobtracker.model.Application;
+import com.jobtracker.model.Status;
 import com.jobtracker.repository.ApplicationRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,15 +12,30 @@ import java.time.LocalDate;
 public class ApplicationService {
 
     private final ApplicationRepository repository;
+    private final NotificationService notificationService;
 
-    public ApplicationService(ApplicationRepository repository) {
+    public ApplicationService(ApplicationRepository repository, NotificationService notificationService) {
         this.repository = repository;
+        this.notificationService = notificationService;
     }
 
     public Application save(String userId, Application app) {
         app.setUserId(userId);
         app.setAppliedDate(LocalDate.now());
-        return repository.save(app);
+
+        //Save the application first
+        Application savedApp = repository.save(app);
+
+        //Create follwoe-up reminder if status is APPLIED
+        if (app.getStatus() == Status.APPLIED) {
+            try {
+                notificationService.createFollowUpReminder(savedApp);
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to create follow-up reminder: " + e.getMessage());
+                // Don't fail the application creation if notification creation fails
+            }
+        }
+        return savedApp;
     }
 
     public List<Application> getAllByUser(String userId) {
@@ -60,6 +76,8 @@ public class ApplicationService {
             if (appDetails.getAppliedDate() != null) app.setAppliedDate(appDetails.getAppliedDate());
             if (appDetails.getLastFollowUpDate() != null) app.setLastFollowUpDate(appDetails.getLastFollowUpDate());
             if (appDetails.getReferral() != null) app.setReferral(appDetails.getReferral());
+            if (appDetails.getInterviewDate() != null) app.setInterviewDate(appDetails.getInterviewDate());
+            if (appDetails.getAssessmentDate() != null) app.setAssessmentDate(appDetails.getAssessmentDate());
             return repository.save(app);
         }).orElseThrow(() -> new RuntimeException("Application not found: " + id));
     }

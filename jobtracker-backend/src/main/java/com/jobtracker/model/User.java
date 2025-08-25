@@ -42,4 +42,8 @@ public class User {
     @NotBlank(message = "Role is required")
     private String role; // admin | user
     private final Instant createdAt = Instant.now();
+
+    private boolean notificationEnabled = true;
+    private boolean emailNotificationsEnabled = true;
+    private boolean inAppNotificationsEnabled = true;
 }
