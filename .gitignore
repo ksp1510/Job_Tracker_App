@@ -36,4 +36,5 @@ logs/
 
 __pycache__/
 *.pyc
+ai-microservices/
 
