@@ -1,45 +1,58 @@
+"""
+Response models for the AI microservice.
+
+These Pydantic models define the shape of responses returned from the various
+API endpoints. They encapsulate the results of job searches, resume analysis
+and optimisation, interview question generation and mock interview sessions.
+Each response model closely matches the information consumed by the
+corresponding request model in ``requests.py``.
+"""
+
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
-class MatchQuality(str, Enum):
-    EXCELLENT = "excellent"  # 90-100%
-    GOOD = "good"           # 75-89%
-    FAIR = "fair"           # 60-74%
-    POOR = "poor"           # <60%
-
-class QuestionDifficulty(str, Enum):
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
-
 # ============ JOB SEARCH RESPONSES ============
 
 class JobResult(BaseModel):
-    job_id: str = Field(..., description="Unique job identifier")
+    """Represents a single job posting returned by the job search endpoints."""
+
+    id: str = Field(..., description="Unique identifier for the job posting")
     title: str = Field(..., description="Job title")
     company: str = Field(..., description="Company name")
-    location: str = Field(..., description="Job location")
-    salary_min: Optional[int] = Field(None, description="Minimum salary")
-    salary_max: Optional[int] = Field(None, description="Maximum salary")
-    description: str = Field(..., description="Job description")
-    requirements: List[str] = Field(default=[], description="Job requirements")
-    skills: List[str] = Field(default=[], description="Required skills")
-    employment_type: Optional[str] = Field(None, description="Employment type")
-    remote: bool = Field(default=False, description="Remote work option")
-    posted_date: Optional[str] = Field(None, description="Job posting date")
-    job_url: Optional[str] = Field(None, description="Original job URL")
-    company_logo: Optional[str] = Field(None, description="Company logo URL")
-    
+    location: Optional[str] = Field(None, description="Job location (city, state)")
+    salary_min: Optional[int] = Field(None, description="Minimum salary on offer")
+    salary_max: Optional[int] = Field(None, description="Maximum salary on offer")
+    description: Optional[str] = Field(None, description="Detailed job description")
+    skills: List[str] = Field(default_factory=list, description="List of skills required")
+    employment_type: Optional[str] = Field(None, description="Full‑time, Part‑time, Contract, etc.")
+    remote: Optional[bool] = Field(None, description="Indicates if the position is remote")
+    posted_date: Optional[str] = Field(None, description="Date the job was posted (YYYY‑MM‑DD)")
+    url: Optional[str] = Field(None, description="Link to the job posting")
+    company_logo_url: Optional[str] = Field(None, description="URL to the company logo")
+    similarity_score: Optional[float] = Field(
+        None,
+        description="Cosine similarity score between the resume and job description (0‑1)",
+    )
+    '''
     # AI-generated fields
     match_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Resume match score")
     match_quality: Optional[MatchQuality] = Field(None, description="Match quality rating")
     missing_skills: List[str] = Field(default=[], description="Skills missing from resume")
     matching_keywords: List[str] = Field(default=[], description="Keywords that match resume")
     ai_summary: Optional[str] = Field(None, description="AI-generated job summary")
+    '''
 
 class JobSearchResponse(BaseModel):
+    """Response returned from the job search endpoint."""
+
+    results: List[JobResult] = Field(..., description="List of job postings matching the query")
+    total_results: int = Field(..., description="Total number of jobs returned before filtering")
+
+    '''
     success: bool = Field(default=True, description="Request success status")
     message: Optional[str] = Field(None, description="Response message")
     total_jobs: int = Field(..., ge=0, description="Total jobs found")
@@ -47,217 +60,102 @@ class JobSearchResponse(BaseModel):
     search_metadata: Dict[str, Any] = Field(default={}, description="Search metadata")
     ai_insights: Optional[Dict[str, Any]] = Field(None, description="AI-generated insights")
     processing_time: float = Field(..., description="Processing time in seconds")
-
-class JobMatchResponse(BaseModel):
-    success: bool = Field(default=True, description="Request success status")
-    user_id: str = Field(..., description="User ID")
-    total_jobs: int = Field(..., description="Total jobs analyzed")
-    matched_jobs: List[JobResult] = Field(..., description="Jobs that meet match threshold")
-    match_summary: Dict[str, Any] = Field(default={}, description="Overall match summary")
-    recommendations: List[str] = Field(default=[], description="AI recommendations")
-    processing_time: float = Field(..., description="Processing time in seconds")
-
-# ============ RESUME ANALYSIS RESPONSES ============
-
-class SkillAnalysis(BaseModel):
-    skill: str = Field(..., description="Skill name")
-    proficiency_level: Optional[str] = Field(None, description="Proficiency level")
-    years_experience: Optional[int] = Field(None, description="Years of experience")
-    last_used: Optional[str] = Field(None, description="When skill was last used")
-    skill_category: Optional[str] = Field(None, description="Technical, soft, domain, etc.")
-
-class ExperienceAnalysis(BaseModel):
-    job_title: str = Field(..., description="Job title")
-    company: str = Field(..., description="Company name")
-    duration: Optional[str] = Field(None, description="Employment duration")
-    key_achievements: List[str] = Field(default=[], description="Key achievements")
-    relevant_skills: List[str] = Field(default=[], description="Skills from this role")
+    '''
 
 class ResumeAnalysisResponse(BaseModel):
-    success: bool = Field(default=True, description="Analysis success status")
-    user_id: str = Field(..., description="User ID")
-    
-    # Core analysis
-    extracted_skills: List[SkillAnalysis] = Field(..., description="Extracted skills analysis")
-    experience_summary: List[ExperienceAnalysis] = Field(..., description="Experience analysis")
-    education: List[Dict[str, str]] = Field(default=[], description="Education details")
-    certifications: List[str] = Field(default=[], description="Certifications")
-    
-    # Analytics
-    total_experience_years: Optional[int] = Field(None, description="Total years of experience")
-    career_level: Optional[str] = Field(None, description="Career level assessment")
-    skill_gaps: List[str] = Field(default=[], description="Potential skill gaps")
-    strengths: List[str] = Field(default=[], description="Resume strengths")
-    improvement_suggestions: List[str] = Field(default=[], description="Improvement suggestions")
-    
-    # Keywords and matching
-    keywords: List[str] = Field(default=[], description="Important keywords found")
-    ats_score: Optional[float] = Field(None, ge=0.0, le=100.0, description="ATS compatibility score")
-    
-    # Processing info
-    processing_time: float = Field(..., description="Processing time in seconds")
-    analysis_timestamp: datetime = Field(default_factory=datetime.now)
+    """Response containing the analysis of a resume."""
+
+    ats_score: float = Field(..., ge=0.0, le=100.0, description="ATS compatibility score (0‑100)")
+    skills: List[str] = Field(default_factory=list, description="Skills extracted from the resume")
+    experience: List[str] = Field(default_factory=list, description="Key experience phrases")
+    education: List[str] = Field(default_factory=list, description="Educational qualifications")
+    certifications: List[str] = Field(default_factory=list, description="Certifications obtained")
+    skill_gap: List[str] = Field(default_factory=list, description="Skills missing relative to the job description")
 
 class ResumeOptimizationResponse(BaseModel):
-    success: bool = Field(default=True, description="Optimization success status")
-    user_id: str = Field(..., description="User ID")
-    
-    # Optimization results
-    optimized_sections: Dict[str, str] = Field(default={}, description="Optimized resume sections")
-    added_keywords: List[str] = Field(default=[], description="Keywords that should be added")
-    improved_phrases: List[Dict[str, str]] = Field(default=[], description="Original -> improved phrases")
-    formatting_suggestions: List[str] = Field(default=[], description="Formatting improvements")
-    
-    # Scoring
-    original_score: float = Field(..., ge=0.0, le=100.0, description="Original resume score")
-    optimized_score: float = Field(..., ge=0.0, le=100.0, description="Optimized resume score")
-    improvement_percentage: float = Field(..., description="Percentage improvement")
-    
-    # Detailed feedback
-    missing_skills: List[str] = Field(default=[], description="Skills missing from resume")
-    skill_match_improvement: Dict[str, float] = Field(default={}, description="Skill match improvements")
-    recommendations: List[str] = Field(default=[], description="Specific recommendations")
-    
-    processing_time: float = Field(..., description="Processing time in seconds")
+    """Response containing suggested improvements for a resume."""
 
-# ============ INTERVIEW RESPONSES ============
+    summary: str = Field(..., description="Concise summary of the current resume")
+    keywords: List[str] = Field(default_factory=list, description="Relevant keywords to include")
+    skills_to_add: List[str] = Field(default_factory=list, description="Missing skills to incorporate")
+    experience_to_add: List[str] = Field(default_factory=list, description="Experience areas to elaborate")
+    education_to_add: List[str] = Field(default_factory=list, description="Educational items to add")
+    certifications_to_add: List[str] = Field(default_factory=list, description="Certifications to pursue")
+    recommendations: Optional[str] = Field(None, description="Free‑form recommendations for improvement")
+
 
 class InterviewQuestion(BaseModel):
-    question_id: str = Field(..., description="Unique question identifier")
-    question: str = Field(..., description="Interview question")
-    category: str = Field(..., description="Question category")
-    difficulty: QuestionDifficulty = Field(..., description="Question difficulty")
-    expected_answer_points: List[str] = Field(default=[], description="Key points for good answer")
-    followup_questions: List[str] = Field(default=[], description="Potential follow-up questions")
-    tips: List[str] = Field(default=[], description="Tips for answering")
+    question_id: str = Field(..., description="Unique identifier for the question")
+    question: str = Field(..., description="The interview question text")
+    category: Optional[str] = Field(None, description="Category (general, technical, behavioral, etc.)")
+    difficulty: QuestionDifficulty = Field(..., description="Difficulty level of the question")
+    expected_answer_points: List[str] = Field(default_factory=list, description="Key points expected in the answer")
+    followup_questions: List[str] = Field(default_factory=list, description="Follow-up questions if applicable")
+    tips: List[str] = Field(default_factory=list, description="Tips or hints for answering this question")
+
 
 class InterviewQuestionsResponse(BaseModel):
-    success: bool = Field(default=True, description="Generation success status")
-    user_id: str = Field(..., description="User ID")
-    job_title: str = Field(..., description="Job title")
-    company_name: Optional[str] = Field(None, description="Company name")
-    
-    # Questions by category
-    questions: List[InterviewQuestion] = Field(..., description="Generated interview questions")
-    questions_by_category: Dict[str, List[InterviewQuestion]] = Field(default={}, description="Questions grouped by category")
-    
-    # Preparation insights
-    key_topics: List[str] = Field(default=[], description="Key topics to prepare")
-    skill_focus_areas: List[str] = Field(default=[], description="Skills to highlight")
-    company_research_points: List[str] = Field(default=[], description="Company research suggestions")
-    preparation_tips: List[str] = Field(default=[], description="General preparation tips")
-    
-    processing_time: float = Field(..., description="Processing time in seconds")
-    generated_at: datetime = Field(default_factory=datetime.now)
+    """Response containing a list of structured interview questions."""
 
-class MockInterviewSession(BaseModel):
-    session_id: str = Field(..., description="Session identifier")
-    user_id: str = Field(..., description="User ID")
-    job_title: str = Field(..., description="Job title")
-    status: str = Field(..., description="Session status: active, paused, completed")
-    current_question_index: int = Field(default=0, description="Current question index")
-    total_questions: int = Field(..., description="Total questions in session")
-    
-    # Timing
-    start_time: datetime = Field(..., description="Session start time")
-    estimated_duration: int = Field(..., description="Estimated duration in minutes")
-    time_elapsed: Optional[int] = Field(None, description="Time elapsed in seconds")
-    
-    # Progress
-    questions_answered: int = Field(default=0, description="Questions answered")
-    current_question: Optional[InterviewQuestion] = Field(None, description="Current question")
+    success: bool = Field(default=True, description="Whether the request was successful")
+    user_id: Optional[str] = Field(None, description="User requesting the questions")
+    job_title: Optional[str] = Field(None, description="Target job title")
+    company_name: Optional[str] = Field(None, description="Target company name")
+    questions: List[InterviewQuestion] = Field(..., description="List of generated interview questions")
+    questions_by_category: Dict[str, List[InterviewQuestion]] = Field(default_factory=dict, description="Questions grouped by category")
+    key_topics: List[str] = Field(default_factory=list, description="Key topics to focus on")
+    skill_focus_areas: List[str] = Field(default_factory=list, description="Key skills to emphasize")
+    company_research_points: List[str] = Field(default_factory=list, description="Research points about the company")
+    preparation_tips: List[str] = Field(default_factory=list, description="General preparation tips")
+    processing_time: Optional[float] = Field(None, description="Time taken to generate questions")
 
-class AnswerEvaluation(BaseModel):
-    question_id: str = Field(..., description="Question ID")
-    question: str = Field(..., description="Original question")
-    user_answer: str = Field(..., description="User's answer")
-    
-    # Scoring
-    overall_score: float = Field(..., ge=0.0, le=10.0, description="Overall answer score")
-    content_score: float = Field(..., ge=0.0, le=10.0, description="Content quality score")
-    structure_score: float = Field(..., ge=0.0, le=10.0, description="Answer structure score")
-    relevance_score: float = Field(..., ge=0.0, le=10.0, description="Relevance to question score")
-    
-    # Detailed feedback
-    strengths: List[str] = Field(default=[], description="Answer strengths")
-    improvements: List[str] = Field(default=[], description="Areas for improvement")
-    missing_points: List[str] = Field(default=[], description="Key points missed")
-    suggested_improvement: Optional[str] = Field(None, description="Improved version of answer")
-    
-    # Timing
-    time_taken: Optional[int] = Field(None, description="Time taken to answer in seconds")
-    recommended_time: Optional[int] = Field(None, description="Recommended answer time")
 
-class MockInterviewResponse(BaseModel):
-    success: bool = Field(default=True, description="Response success status")
-    session: MockInterviewSession = Field(..., description="Session details")
-    current_evaluation: Optional[AnswerEvaluation] = Field(None, description="Current answer evaluation")
-    
-    # Session progress
-    progress_percentage: float = Field(..., ge=0.0, le=100.0, description="Session progress")
-    next_question: Optional[InterviewQuestion] = Field(None, description="Next question")
-    
-    # Real-time feedback
-    session_insights: List[str] = Field(default=[], description="Real-time session insights")
-    performance_trends: Dict[str, float] = Field(default={}, description="Performance trends")
 
-class InterviewSessionSummary(BaseModel):
-    session_id: str = Field(..., description="Session ID")
-    user_id: str = Field(..., description="User ID")
-    completed_at: datetime = Field(..., description="Completion timestamp")
-    
-    # Overall performance
-    overall_score: float = Field(..., ge=0.0, le=10.0, description="Overall interview score")
-    total_questions: int = Field(..., description="Total questions")
-    questions_answered: int = Field(..., description="Questions answered")
-    total_duration: int = Field(..., description="Total duration in minutes")
-    
-    # Category performance
-    category_scores: Dict[str, float] = Field(default={}, description="Scores by question category")
-    skill_assessment: Dict[str, float] = Field(default={}, description="Skill-based assessment")
-    
-    # Detailed evaluations
-    question_evaluations: List[AnswerEvaluation] = Field(default=[], description="All answer evaluations")
-    
-    # Comprehensive feedback
-    overall_strengths: List[str] = Field(default=[], description="Overall strengths")
-    areas_for_improvement: List[str] = Field(default=[], description="Areas for improvement")
-    interview_tips: List[str] = Field(default=[], description="Interview tips")
-    next_steps: List[str] = Field(default=[], description="Recommended next steps")
-    
-    # Performance metrics
-    average_response_time: float = Field(..., description="Average response time")
-    confidence_score: Optional[float] = Field(None, description="Confidence assessment")
-    communication_score: Optional[float] = Field(None, description="Communication effectiveness")
 
-# ============ UTILITY RESPONSES ============
+class MockInterviewQuestion(BaseModel):
+    """Represents a single question and optionally an answer in a mock interview session."""
+
+    question_id: str = Field(..., description="Unique identifier for the question")
+    question: str = Field(..., description="The interview question")
+    answer: Optional[str] = Field(None, description="Candidate's answer to the question, if provided")
+    evaluation: Optional[str] = Field(None, description="AI evaluation of the answer, if available")
+
+
+class MockInterviewSessionResponse(BaseModel):
+    """Response returned when initiating or progressing a mock interview session."""
+
+    session_id: str = Field(..., description="Unique ID for the interview session")
+    questions: List[MockInterviewQuestion] = Field(
+        default_factory=list, description="Ordered list of questions in the session"
+    )
+    current_question_index: int = Field(
+        ..., ge=0, description="Index of the question the candidate should answer next"
+    )
+    completed: bool = Field(
+        False, description="Indicates whether the mock interview has finished"
+    )
+
+
+class QuestionDifficulty(str, Enum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
 
 class EmbeddingResponse(BaseModel):
-    success: bool = Field(default=True, description="Embedding success status")
-    embeddings: List[List[float]] = Field(..., description="Generated embeddings")
-    model_used: str = Field(..., description="Embedding model used")
-    processing_time: float = Field(..., description="Processing time in seconds")
+    """Response containing one or more sentence embeddings."""
+
+    embeddings: List[List[float]] = Field(..., description="List of embeddings for the input texts")
+
 
 class FileProcessingResponse(BaseModel):
-    success: bool = Field(default=True, description="Processing success status")
-    file_path: str = Field(..., description="Processed file path")
-    extracted_text: str = Field(..., description="Extracted text content")
-    metadata: Dict[str, Any] = Field(default={}, description="File metadata")
-    processing_time: float = Field(..., description="Processing time in seconds")
+    """Response containing processed file text or metadata."""
+
+    file_text: str = Field(..., description="Extracted plain text from the file")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata about the file")
+
 
 class HealthCheckResponse(BaseModel):
-    status: str = Field(..., description="Service status")
-    service: str = Field(..., description="Service name")
-    timestamp: datetime = Field(default_factory=datetime.now)
-    version: str = Field(default="1.0.0", description="Service version")
-    dependencies: Dict[str, str] = Field(default={}, description="Dependency status")
+    """Simple response for health‑check endpoints."""
 
-# ============ ERROR RESPONSES ============
-
-class ErrorResponse(BaseModel):
-    success: bool = Field(default=False, description="Request success status")
-    error_code: str = Field(..., description="Error code")
-    message: str = Field(..., description="Error message")
-    details: Optional[Dict[str, Any]] = Field(None, description="Error details")
-    timestamp: datetime = Field(default_factory=datetime.now)
-    request_id: Optional[str] = Field(None, description="Request identifier")
+    status: str = Field(..., description="Health status of the service (e.g. 'ok')")

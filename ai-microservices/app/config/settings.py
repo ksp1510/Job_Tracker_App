@@ -1,16 +1,24 @@
-import os
-from typing import Optional
+"""
+Pydantic settings for the AI microservice.
+
+All configurable options for the microservice are defined here.  Environment variables
+may be provided via a `.env` file in the repository root or via the host environment.
+"""
+
+from typing import Optional, List, Dict, Any
 from pydantic_settings import BaseSettings
+from pydantic import Field
 
 class Settings(BaseSettings):
-    # API Keys
-    OPENAI_API_KEY: Optional[str] = None
+    """Application settings loaded from environment variables or a .env file."""
+    # API Keys for external job search APIs.  No OpenAI keys are required
+    # because this microservice runs exclusively on self‑hosted HuggingFace models.
     THEIRSTACK_API_KEY: Optional[str] = None
     JSEARCH_API_KEY: Optional[str] = None
+    HF_TOKEN: Optional[str] = Field(None, alias="HF_TOKEN")
     
     # Model Configuration
-    USE_OPENAI: bool = False  # Start with free models
-    LLM_MODEL: str = "microsoft/DialoGPT-medium"  # Free HuggingFace model
+    LLM_MODEL: str = "microsoft/DialoGPT-medium"   # switched from Llama
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     
     # Job Search Configuration
@@ -42,7 +50,6 @@ class Settings(BaseSettings):
     # Performance
     MAX_CONCURRENT_REQUESTS: int = 10
     REQUEST_TIMEOUT: int = 30
-    
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "ai_service.log"
@@ -50,45 +57,42 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        populate_by_name = True  # <-- important for alias support
+        extra = "allow"          # <-- allow extra env vars instead of throwing error
 
 # Global settings instance
 settings = Settings()
 
 # API Configuration
 class APIConfig:
-    """API endpoints and configuration"""
-    
-    # Job Search APIs
+    """Static helper for API endpoints and headers."""
+    # Base URLs for third‑party APIs
     THEIRSTACK_BASE_URL = "https://api.theirstack.com/v1"
     JSEARCH_BASE_URL = "https://jsearch.p.rapidapi.com"
-    
-    # OpenAI API
-    OPENAI_BASE_URL = "https://api.openai.com/v1"
-    
-    # Model endpoints
-    HUGGINGFACE_BASE_URL = "https://api-inference.huggingface.co/models"
-    
+    # No OpenAI base URL because we do not call OpenAI
+
     @classmethod
-    def get_job_search_headers(cls, api_name: str) -> dict:
-        """Get headers for job search APIs"""
+    def get_job_search_headers(cls, api_name: str) -> Dict[str, str]:
         if api_name == "theirstack":
             return {
                 "Authorization": f"Bearer {settings.THEIRSTACK_API_KEY}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-        elif api_name == "jsearch":
+        if api_name == "jsearch":
             return {
-                "X-RapidAPI-Key": settings.JSEARCH_API_KEY,
+                "X-RapidAPI-Key": settings.JSEARCH_API_KEY or "",
                 "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
         return {}
 
+
 # Mock Data Configuration
 class MockDataConfig:
-    """Configuration for mock job data during development"""
-    
-    SAMPLE_JOBS = [
+    """Configuration for mock job data during development
+    Sample data used during development when `USE_MOCK_DATA` is True."""
+    # Example job postings
+    SAMPLE_JOBS : List[Dict[str, Any]] = [
         {
             "id": "job_1",
             "title": "Senior Software Engineer",
@@ -135,8 +139,9 @@ class MockDataConfig:
             "posted_date": "2024-08-21"
         }
     ]
-    
-    SAMPLE_INTERVIEW_QUESTIONS = {
+
+    # Example interview questions grouped by category
+    SAMPLE_INTERVIEW_QUESTIONS: Dict[str, List[str]] = {
         "general": [
             "Tell me about yourself",
             "Why are you interested in this role?",

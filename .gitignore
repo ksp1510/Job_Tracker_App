@@ -12,3 +12,4 @@ ai-microservices/venv/bin/activate.csh
 lib/python3.12/site-packages/
 ai-microservices/venv/lib/python3.12/site-packages/
 ai-microservices/venv/lib64/python3.12/site-packages/
+ai-microservices/.env
