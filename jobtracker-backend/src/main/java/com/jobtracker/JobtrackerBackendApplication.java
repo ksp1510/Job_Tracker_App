@@ -16,6 +16,8 @@ public class JobtrackerBackendApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(JobtrackerBackendApplication.class, args);
+		System.out.println("🚀 JobTracker Backend Started!");
+		System.out.println("📧 Notification system is active");
 	}
 
 	/*@Bean

@@ -31,11 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
-
-### AWS ###
-awscliv2.zip
-credentials
-credentials.example
-application.properties
-application.properties.example
+.bashrc
+.bash_history
 

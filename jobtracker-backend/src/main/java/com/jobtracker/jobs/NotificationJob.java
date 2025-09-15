@@ -14,10 +14,14 @@ public class NotificationJob {
         this.notificationService = notificationService;
     }
 
-    // Run every 1 minute for demo (cron every hour in production)
-    @Scheduled(fixedRate = 60000)
-    public void run() {
-        notificationService.processDueNotifications();
+    @Scheduled(fixedRate = 60000) // Every 1 minute
+    public void processNotifications() {
+        try {
+            System.out.println("🔄 Running notification job...");
+            notificationService.processDueNotifications();
+        } catch (Exception e) {
+            System.err.println("❌ Notification job failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
-

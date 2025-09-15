@@ -11,7 +11,7 @@ import lombok.Data;
 import com.jobtracker.config.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -30,9 +30,8 @@ public class ApplicationController {
 
     // 🔹 Create new application
     @PostMapping
-    public ResponseEntity<Application> create(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody Application application) {
+    public ResponseEntity<Application> create(@Valid @RequestBody Application application,
+            @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
         return ResponseEntity.ok(service.save(userId, application));
@@ -47,33 +46,45 @@ public class ApplicationController {
         return ResponseEntity.ok(service.getAllByUser(userId));
     }
 
+    // 🔹 Get all applications by status for logged in user
+    @GetMapping("/by-status")
+    public ResponseEntity<List<Application>> getAllByStatus(
+        @RequestParam String status,
+        @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+        return ResponseEntity.ok(service.findByUserIdAndStatus(userId, status));
+    }
+
     // 🔹 Get application by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Application> getById(@PathVariable String id) {
-        return service.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Application> getById(@PathVariable String id,
+                                            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
+        return ResponseEntity.ok(service.findByIdAndUserId(id, userId));
     }
+
+
 
     // 🔹 Update application
     @PutMapping("/{id}")
-    public ResponseEntity<Application> update(
-            @PathVariable String id,
-            @RequestBody Application appDetails) {
+    public ResponseEntity<Application> update(@Valid @RequestBody Application appDetails,
+            @PathVariable String id) {
         return ResponseEntity.ok(service.update(id, appDetails));
     }
 
     // 🔹 Delete application
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@Valid @PathVariable String id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/with-files")
-    public ResponseEntity<ApplicationResponse> getApplicationWithFiles(@PathVariable String id) {
-        Application app = service.getById(id)
-                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    public ResponseEntity<ApplicationResponse> getApplicationWithFiles(@Valid @PathVariable String id) {
+        Application app = service.getById(id);
 
         List<Files> files = fileRepository.findByApplicationId(id);
 

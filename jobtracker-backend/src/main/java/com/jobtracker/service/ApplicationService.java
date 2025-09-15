@@ -3,12 +3,10 @@ package com.jobtracker.service;
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Status;
 import com.jobtracker.repository.ApplicationRepository;
-import com.jobtracker.service.NotificationService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Service
 public class ApplicationService {
@@ -24,28 +22,42 @@ public class ApplicationService {
     public Application save(String userId, Application app) {
         app.setUserId(userId);
         app.setAppliedDate(LocalDate.now());
-        Application saved = repository.save(app);
-    
-        // Auto-create reminder 7 days later
-        notificationService.createFollowUpReminder(saved, 7);
 
-         // Auto-create reminders
-        if (saved.getStatus() == Status.INTERVIEW) {
-            notificationService.createInterviewReminder(saved);
-        } else {
-            notificationService.createFollowUpReminder(saved, 7);
+        //Save the application first
+        Application savedApp = repository.save(app);
+
+        //Create follwoe-up reminder if status is APPLIED
+        if (app.getStatus() == Status.APPLIED) {
+            try {
+                notificationService.createFollowUpReminder(savedApp);
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to create follow-up reminder: " + e.getMessage());
+                // Don't fail the application creation if notification creation fails
+            }
         }
-
-        return saved;
+        return savedApp;
     }
-    
 
     public List<Application> getAllByUser(String userId) {
         return repository.findByUserId(userId);
     }
 
-    public Optional<Application> getById(String id) {
-        return repository.findById(id);
+    public Application getById(String id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    }
+
+    public Application findByIdAndUserId(String id, String userId) {
+        return repository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    }
+
+    public List<Application> findByStatus(String status) {
+        return repository.findByStatus(status);
+    }
+
+    public List<Application> findByUserIdAndStatus(String userId, String status) {
+        return repository.findByUserIdAndStatus(userId, status);
     }
 
     public Application update(String id, Application appDetails) {
@@ -64,6 +76,8 @@ public class ApplicationService {
             if (appDetails.getAppliedDate() != null) app.setAppliedDate(appDetails.getAppliedDate());
             if (appDetails.getLastFollowUpDate() != null) app.setLastFollowUpDate(appDetails.getLastFollowUpDate());
             if (appDetails.getReferral() != null) app.setReferral(appDetails.getReferral());
+            if (appDetails.getInterviewDate() != null) app.setInterviewDate(appDetails.getInterviewDate());
+            if (appDetails.getAssessmentDate() != null) app.setAssessmentDate(appDetails.getAssessmentDate());
             return repository.save(app);
         }).orElseThrow(() -> new RuntimeException("Application not found: " + id));
     }

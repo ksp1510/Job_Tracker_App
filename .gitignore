@@ -1,33 +1,10 @@
-# Application properties with secrets
-application.properties
-**/application.properties
-
-# Large files
-*.zip
-awscliv2.zip
-**/awscliv2.zip
-
-# Git repositories (should not be tracked)
-*.git/
-**/objects/
-**/*.pack
-**/*.idx
-
-# Maven/Gradle build artifacts
+node_modules/
 target/
-build/
-*.jar
-*.war
-
-# IDE files
 .idea/
-*.iml
 .vscode/
-.DS_Store
+jobtracker-backend/.bashrc
+jobtracker-backend/.bash_history
 
-# Environment files
-.env
-*.env
 
 # Logs
 *.log
