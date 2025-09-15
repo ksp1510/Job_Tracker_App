@@ -34,7 +34,16 @@ __pycache__/
 .venv/
 .envrc
 
+
 # General
 *.swp
 .vscode/
 ai-microservices/
+
+ai-microservices/venv/
+ai-microservices/venv/bin/activate
+ai-microservices/venv/bin/activate.csh
+lib/python3.12/site-packages/
+ai-microservices/venv/lib/python3.12/site-packages/
+ai-microservices/venv/lib64/python3.12/site-packages/
+
