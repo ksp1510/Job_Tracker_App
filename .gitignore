@@ -36,3 +36,5 @@ __pycache__/
 
 # General
 *.swp
+.vscode/
+ai-microservices/
