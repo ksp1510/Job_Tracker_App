@@ -36,6 +36,7 @@ __pycache__/
 .venv/
 .envrc
 
+
 # General
 *.swp
 .vscode/
