@@ -1,0 +1,57 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:}
+      database: JobTrackerApp
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration: 3600000 # 1 hour
+
+# AWS Configuration
+aws:
+  region: ${AWS_REGION:us-east-1}
+  s3:
+    bucket: ${AWS_S3_BUCKET:job-tracker-app-v0.1}
+  ses:
+    from-email: ${AWS_SES_FROM_EMAIL:ksp1510@gmail.com}
+    test-email: ${AWS_SES_TEST_EMAIL:ksp1510@gmail.com}
+
+# External API Keys
+app:
+  api:
+    serpapi:
+      key: ${SERPAPI_KEY:}
+    rapidapi:
+      key: ${RAPIDAPI_KEY:}
+    theirstack:
+      key: ${THEIRSTACK_KEY:}
+  
+  jobs:
+    seed:
+      enabled: ${JOB_SEED_ENABLED:true}
+
+# Logging
+logging:
+  level:
+    com.jobtracker: INFO
+    org.springframework.security: DEBUG
+    software.amazon.awssdk: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

@@ -22,6 +22,8 @@ target/
 hs_err_pid*
 *.iml
 .idea/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.jar
 
 # Python / FastAPI
 __pycache__/
@@ -38,3 +40,11 @@ __pycache__/
 *.swp
 .vscode/
 ai-microservices/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
