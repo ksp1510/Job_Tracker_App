@@ -50,6 +50,19 @@ public class Application {
     private String coverLetterId;
     private String notes;
     private String referral;
+
+    // Add constructor for easy testing
+    public Application() {}
+    
+    public Application(String companyName, String jobTitle, String jobLocation, 
+                      String jobDescription, Status status) {
+        this.companyName = companyName;
+        this.jobTitle = jobTitle;
+        this.jobLocation = jobLocation;
+        this.jobDescription = jobDescription;
+        this.status = status;
+        this.appliedDate = LocalDate.now();
+    }
 }
 
 

@@ -2,14 +2,18 @@ package com.jobtracker.config;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
 @Component
 public class JwtUtil {
-    private final String secret = "MySuperSecretKey123456789MySuperSecretKey"; // must be 32+ chars
-    private final long expiration = 3600000; // 1h
+    @Value("${jwt.secret}")
+    private String secret;
+    
+    @Value("${jwt.expiration}")
+    private long expiration;
 
     public String generateToken(String userId, String role) {
         return Jwts.builder()
