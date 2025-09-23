@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 
-import com.jobtracker.config.ApiKeyConfig;
+import com.jobtracker.config.ApiKeyConfiguration;
 
 import lombok.val;
 
