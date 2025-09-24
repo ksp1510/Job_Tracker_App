@@ -34,15 +34,6 @@ public class ExternalJobApiService {
     @Value("${app.api.rapidapi.key:}")
     private String rapidApiKey;
 
-    @Value("${app.api.theirstack.key:}")
-    private String theirStackKey;
-
-    @Value("${app.api.theirstack.base-url:https://api.theirstack.com}")
-    private String theirStackBaseUrl;
-
-    @Value("${app.api.theirstack.endpoint:/v1/jobs/search}")
-    private String theirStackEndpoint;
-
 
     // Add debug method to check values
     @PostConstruct
@@ -50,13 +41,11 @@ public class ExternalJobApiService {
         System.out.println("🔧 ExternalJobApiService Configuration:");
         System.out.println("   SerpAPI key length: " + (serpApiKey != null ? serpApiKey.length() : "null"));
         System.out.println("   RapidAPI key length: " + (rapidApiKey != null ? rapidApiKey.length() : "null"));
-        System.out.println("   TheirStack key length: " + (theirStackKey != null ? theirStackKey.length() : "null"));
         
         // Check environment variables directly
         System.out.println("🔧 Direct Environment Variables:");
         System.out.println("   SERPAPI_KEY: " + (System.getenv("SERPAPI_KEY") != null ? "SET" : "NOT_SET"));
         System.out.println("   RAPIDAPI_KEY: " + (System.getenv("RAPIDAPI_KEY") != null ? "SET" : "NOT_SET"));  
-        System.out.println("   THEIRSTACK_KEY: " + (System.getenv("THEIRSTACK_KEY") != null ? "SET" : "NOT_SET"));
     }
 
     public ExternalJobApiService(WebClient.Builder webClientBuilder, 
@@ -106,21 +95,6 @@ public class ExternalJobApiService {
                 }
             }
 
-
-            // Test TheirStack
-            results.append("=== TheirStack ===\n");
-            if (theirStackKey.isEmpty()) {
-                results.append("❌ TheirStack key not configured\n");
-            } else {
-                results.append("✅ TheirStack key configured (length: ").append(theirStackKey.length()).append("\n");
-                results.append("Base URL: ").append(theirStackBaseUrl).append(theirStackEndpoint).append("\n");
-                try {
-                    testTheirStackConnection();
-                    results.append("✅ TheirStack connection successful\n");
-                } catch (Exception e) {
-                    results.append("❌ TheirStack connection failed: ").append(e.getMessage()).append("\n");
-                }
-            }
 
             return results.toString();
         });
@@ -186,104 +160,6 @@ public class ExternalJobApiService {
         }
     }
 
-
-    /**
-     * Test TheirStack connection with minimal request
-     */
-    private void testTheirStackConnection() throws Exception {
-        List<String> authPatterns = List.of(
-            "query-param",
-            "bearer-header",
-            "bearer-token",
-            "api-key-header",
-            "custom-header"
-        );
-
-        Exception lastException = null;
-
-        for (String pattern : authPatterns) {
-            try {
-                System.out.println("Testing TheirStack authentication pattern: " + pattern);
-                testTheirStackWithPattern(pattern);
-                System.out.println("✅ TheirStack: " + pattern + " authentication successfull!");
-                return;
-            } catch (Exception e) {
-                System.err.println("❌ TheirStack: " + pattern + " authentication failed: " + e.getMessage());
-                lastException = e;
-            }
-        }
-
-        throw new RuntimeException("All TheirStack authentication patterns failed. Last error: " +
-                                (lastException != null ? lastException.getMessage() : "Unknown error"));
-    }
-
-    /**
-     * Test different TheirStack authentication patterns
-     */
-    private void testTheirStackWithPattern(String pattern) throws Exception {
-        WebClient.RequestHeadersSpec<?> request = webClient.get();
-
-        switch (pattern) {
-            case "query-param":
-                //Pattern 1: API key as query parameter
-                request = webClient.get()
-                    .uri(theirStackBaseUrl + theirStackEndpoint + "?query=test&limit=1&api_key=" + theirStackKey);
-                break;
-
-            case "bearer-token":
-                //Pattern 2: Bearer token in authorization header
-                request = webClient.get()
-                    .uri(theirStackBaseUrl + theirStackEndpoint + "?query=test&limit=1")
-                    .header("Authorization", "Bearer " + theirStackKey);
-                break;
-
-            case "api-key-header":
-                //Pattern 3: API key in custom header
-                request = webClient.get()
-                    .uri(theirStackBaseUrl + theirStackEndpoint + "?query=test&limit=1")
-                    .header("X-API-Key", theirStackKey);
-                break;
-
-            case "custom-header":
-                //Pattern 4: TheirStack-specific header
-                request = webClient.get()
-                    .uri(theirStackBaseUrl + theirStackEndpoint + "?query=test&limit=1")
-                    .header("X-TheirStack-Key", theirStackKey)
-                    .header("X-TheiStack-Key", theirStackKey)
-                    .header("X-Auth-Token", theirStackKey);
-                break;
-        }
-
-        // Execute request with error handling
-        String response = request
-                .retrieve()
-                .onStatus(status -> status.is4xxClientError(),
-                        clientResponse -> {
-                            return clientResponse.bodyToMono(String.class)
-                                    .flatMap(errorBody -> {
-                                        String error = "TheorStack " + pattern + " 4xx Error: " + errorBody;
-                                        System.err.println("❌ " + error);
-                                        return Mono.error(new RuntimeException(error));
-                                    });
-                        })
-                .onStatus(status -> status.is5xxServerError(),
-                        clientResponse -> {
-                            return clientResponse.bodyToMono(String.class)
-                                    .flatMap(errorBody -> {
-                                        String error = "TheorStack " + pattern + " 5xx Error: " + errorBody;
-                                        System.err.println("❌ " + error);
-                                        return Mono.error(new RuntimeException(error));
-                                    });
-                        })
-                .bodyToMono(String.class)
-                .block();
-
-        if (response != null && !response.trim().isEmpty()) {
-            System.out.println("✅ TheirStack: " + pattern + " response received (length: " + response.length() + ")");
-        } else {
-            throw new RuntimeException("Empty response from TheirStack");
-        }
-    }
      
     /**
      * Fetch jobs from all external APIs
@@ -293,8 +169,7 @@ public class ExternalJobApiService {
         
         return CompletableFuture.allOf(
                 fetchFromJSearchAPI(query, location),
-                fetchFromSerpAPI(query, location),
-                fetchFromTheirStackAPI(query, location)
+                fetchFromSerpAPI(query, location)
         );
     }
 
@@ -423,125 +298,6 @@ public class ExternalJobApiService {
             }
         });
     }
-    
-
-    /**
-     * Fetch from TheirStack
-     * Note: Replace with actual TheirStack API endpoint
-     */
-    // Replace your fetchFromTheirStackAPI method with this improved version:
-
-private CompletableFuture<Void> fetchFromTheirStackAPI(String query, String location) {
-    return CompletableFuture.runAsync(() -> {
-        try {
-            if (theirStackKey.isEmpty()) {
-                System.out.println("⚠️ TheirStack API key not configured - skipping");
-                return;
-            }
-
-            System.out.println("🔍 Fetching from TheirStack API: " + query + " in " + location);
-
-            // Try multiple endpoint patterns since TheirStack API structure is unclear
-            List<String> endpointPatterns = Arrays.asList(
-                "/jobs",           // GET /jobs
-                "/search",         // GET /search
-                "/v1/jobs",        // GET /v1/jobs
-                "/api/jobs"        // GET /api/jobs
-            );
-
-            List<String> authPatterns = Arrays.asList(
-                "query-param",     // ?api_key=KEY
-                "bearer-token",    // Authorization: Bearer KEY
-                "api-key-header"   // X-API-Key: KEY
-            );
-
-            boolean success = false;
-
-            for (String endpoint : endpointPatterns) {
-                if (success) break;
-                
-                for (String authPattern : authPatterns) {
-                    try {
-                        System.out.println("🧪 Trying TheirStack: " + endpoint + " with " + authPattern);
-                        
-                        RequestBodySpec request = webClient.post();
-                        
-                        switch (authPattern) {
-                            case "query-param":
-                                request = webClient.post()
-                                    .uri(uriBuilder -> uriBuilder
-                                            .scheme("https")
-                                            .host("api.theirstack.com")
-                                            .path(endpoint)
-                                            .queryParam("api_key", theirStackKey)
-                                            .queryParam("query", query)
-                                            .queryParam("location", location)
-                                            .queryParam("limit", "10")
-                                            .build());
-                                break;
-                                
-                            case "bearer-token":
-                                request = webClient.post()
-                                    .uri("https://api.theirstack.com" + endpoint + "?query=" + 
-                                         java.net.URLEncoder.encode(query + " " + location, "UTF-8") + "&limit=10")
-                                    .header("Authorization", "Bearer " + theirStackKey);
-                                break;
-                                
-                            case "api-key-header":
-                                request = webClient.post()
-                                    .uri("https://api.theirstack.com" + endpoint + "?query=" + 
-                                         java.net.URLEncoder.encode(query + " " + location, "UTF-8") + "&limit=10")
-                                    .header("X-API-Key", theirStackKey);
-                                break;
-                        }
-
-                        String responseBody = request
-                                .header("Accept", "application/json")
-                                .retrieve()
-                                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                                        clientResponse -> {
-                                            return clientResponse.bodyToMono(String.class)
-                                                    .flatMap(errorBody -> {
-                                                        System.out.println("⚠️ TheirStack " + authPattern + " " + 
-                                                                         endpoint + " failed: " + errorBody);
-                                                        return Mono.error(new RuntimeException("HTTP Error: " + errorBody));
-                                                    });
-                                        })
-                                .bodyToMono(String.class)
-                                .block();
-
-                        if (responseBody != null && !responseBody.trim().isEmpty()) {
-                            List<JobListing> jobs = parseTheirStackResponse(responseBody);
-                            if (!jobs.isEmpty()) {
-                                jobListingRepository.saveAll(jobs);
-                                System.out.println("✅ Saved " + jobs.size() + " jobs from TheirStack using " + 
-                                                 authPattern + " " + endpoint);
-                                success = true;
-                                break;
-                            } else {
-                                System.out.println("⚠️ TheirStack " + authPattern + " " + endpoint + 
-                                                 " returned empty jobs list");
-                            }
-                        }
-                        
-                    } catch (Exception e) {
-                        System.out.println("⚠️ TheirStack " + authPattern + " " + endpoint + 
-                                         " failed: " + e.getMessage());
-                        // Continue to next pattern
-                    }
-                }
-            }
-            
-            if (!success) {
-                System.out.println("❌ All TheirStack endpoint/auth combinations failed. " +
-                                 "API might not exist or require different authentication.");
-            }
-
-        } catch (Exception e) {
-            System.err.println("❌ TheirStack fetch error: " + e.getMessage());
-        }
-    });
-}
 
     // JSON Parsers for each API
     private List<JobListing> parseJSearchResponse(String json) {
@@ -625,127 +381,6 @@ private CompletableFuture<Void> fetchFromTheirStackAPI(String query, String loca
         }
         return jobs;
     }
-
-    /**
-     * Parse TheirStack API response (flexible parser)
-     */
-    private List<JobListing> parseTheirStackResponse(String json) {
-        List<JobListing> jobs = new ArrayList<>();
-        try {
-            JsonNode root = objectMapper.readTree(json);
-            
-            // Try different JSON structures that TheirStack might use
-            JsonNode jobsArray = null;
-            
-            // Common patterns for job arrays in APIs
-            if (root.has("jobs")) {
-                jobsArray = root.get("jobs");
-            } else if (root.has("data")) {
-                jobsArray = root.get("data");
-            } else if (root.has("results")) {
-                jobsArray = root.get("results");
-            } else if (root.has("listings")) {
-                jobsArray = root.get("listings");
-            } else if (root.isArray()) {
-                jobsArray = root; // Root is directly an array
-            }
-
-            if (jobsArray != null && jobsArray.isArray()) {
-                for (JsonNode jobNode : jobsArray) {
-                    try {
-                        JobListing job = parseTheirStackJob(jobNode);
-                        if (job != null) {
-                            jobs.add(job);
-                        }
-                    } catch (Exception e) {
-                        System.err.println("⚠️ Error parsing individual TheirStack job: " + e.getMessage());
-                    }
-                }
-            } else {
-                System.out.println("⚠️ TheirStack: No recognizable job array found in response");
-                System.out.println("📄 Available fields: " + getAvailableFields(root));
-            }
-            
-        } catch (Exception e) {
-            System.err.println("❌ Error parsing TheirStack response: " + e.getMessage());
-            e.printStackTrace();
-        }
-        return jobs;
-    }
-
-
-
-    /**
-     * Parse individual job from TheirStack (flexible field mapping)
-     */
-    private JobListing parseTheirStackJob(JsonNode jobNode) {
-        JobListing job = new JobListing();
-        
-        // Try common field names for job ID
-        String jobId = getFieldValue(jobNode, "id", "job_id", "jobId", "_id");
-        job.setExternalId("THEIRSTACK-" + (jobId != null ? jobId : System.currentTimeMillis()));
-        
-        // Try common field names for job title
-        String title = getFieldValue(jobNode, "title", "job_title", "jobTitle", "name", "position");
-        job.setTitle(title != null ? title : "Unknown Title");
-        
-        // Try common field names for company
-        String company = getFieldValue(jobNode, "company", "company_name", "companyName", "employer", "organization");
-        job.setCompany(company != null ? company : "Unknown Company");
-        
-        // Try common field names for location
-        String location = getFieldValue(jobNode, "location", "job_location", "jobLocation", "city", "address");
-        job.setLocation(location != null ? location : "Unknown Location");
-        
-        // Try common field names for description
-        String description = getFieldValue(jobNode, "description", "job_description", "jobDescription", "summary", "details");
-        job.setDescription(description != null ? description : "No description available");
-        
-        // Try common field names for job type
-        String jobType = getFieldValue(jobNode, "type", "job_type", "jobType", "employment_type", "category");
-        job.setJobType(jobType);
-        
-        // Try common field names for apply URL
-        String applyUrl = getFieldValue(jobNode, "url", "apply_url", "applyUrl", "link", "job_url");
-        job.setApplyUrl(applyUrl);
-        
-        job.setSource("THEIRSTACK");
-        job.setPostedDate(Instant.now().minusSeconds(86400)); // Default to 1 day ago
-        job.setActive(true);
-        
-        return job;
-    }
-
-    // Helper methods
-    private String getFieldValue(JsonNode node, String... fieldNames) {
-        for (String fieldName : fieldNames) {
-            if (node.has(fieldName) && !node.get(fieldName).isNull()) {
-                String value = node.get(fieldName).asText();
-                if (value != null && !value.trim().isEmpty()) {
-                    return value.trim();
-                }
-            }
-        }
-        return null;
-    }
-
-    private String getAvailableFields(JsonNode node) {
-        if (node.isObject()) {
-            List<String> fields = new ArrayList<>();
-            node.fieldNames().forEachRemaining(fields::add);
-            return String.join(", ", fields);
-        }
-        return "Not an object";
-    }
-
-    private String extractHost(String url) {
-        try {
-            return url.replace("https://", "").replace("http://", "").split("/")[0];
-        } catch (Exception e) {
-            return "api.theirstack.com"; // Fallback
-        }
-    }  
-    
 
     /**
      * Manual job fetch trigger with detailed logging (for testing)

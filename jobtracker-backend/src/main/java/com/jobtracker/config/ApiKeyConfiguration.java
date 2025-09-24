@@ -26,14 +26,13 @@ public class ApiKeyConfiguration {
     public static class ApiKeys {
         private String serpApiKey = System.getenv("SERPAPI_KEY");
         private String rapidApiKey = System.getenv("RAPIDAPI_KEY");
-        private String theirStackKey = System.getenv("THEIRSTACK_KEY");
+        
         
         @PostConstruct
         public void logConfiguration() {
             System.out.println("🔧 API Keys Configuration:");
             System.out.println("   SerpAPI: " + (serpApiKey != null && !serpApiKey.isEmpty() ? "CONFIGURED" : "NOT_CONFIGURED"));
             System.out.println("   RapidAPI: " + (rapidApiKey != null && !rapidApiKey.isEmpty() ? "CONFIGURED" : "NOT_CONFIGURED"));
-            System.out.println("   TheirStack: " + (theirStackKey != null && !theirStackKey.isEmpty() ? "CONFIGURED" : "NOT_CONFIGURED"));
         }
     }
 }

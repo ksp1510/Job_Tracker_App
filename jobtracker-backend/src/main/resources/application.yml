@@ -33,8 +33,7 @@ app:
       key: ${SERPAPI_KEY:}
     rapidapi:
       key: ${RAPIDAPI_KEY:}
-    theirstack:
-      key: ${THEIRSTACK_KEY:}
+    
   
   jobs:
     seed:
