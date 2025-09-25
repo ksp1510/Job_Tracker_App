@@ -126,8 +126,8 @@ export interface JobSearchParams {
     query?: string;
     location?: string;
     jobType?: string;
-    minSalary?: string;
-    maxSalary?: string;
+    minSalary?: number;
+    maxSalary?: number;
     skills?: string[];
     page?: number;
     size?: number;
@@ -143,6 +143,3 @@ export interface FileUpload {
     uploadedAt: string;
     notes?: string;
 }
-
-    
-    
