@@ -10,6 +10,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.jobtracker.service.JobDataSeedService;
 
+import jakarta.annotation.PostConstruct;
+
 @SpringBootApplication
 @EnableScheduling
 public class JobtrackerBackendApplication {
@@ -39,6 +41,23 @@ public class JobtrackerBackendApplication {
             // Seed will run through scheduled job instead
             System.out.println("🌱 Job seeding enabled");
         };
+    }
+
+    @PostConstruct
+    public void printMongoUri() {
+        System.out.println("MONGODB_URI = " + System.getenv("MONGODB_URI"));
+        System.out.println("JWT_SECRET = " + System.getenv("JWT_SECRET"));
+        System.out.println("AWS_ACCESS_KEY_ID = " + System.getenv("AWS_ACCESS_KEY_ID"));
+        System.out.println("AWS_SECRET_ACCESS_KEY = " + System.getenv("AWS_SECRET_ACCESS_KEY"));
+        System.out.println("AWS_REGION = " + System.getenv("AWS_REGION"));
+        System.out.println("AWS_S3_BUCKET = " + System.getenv("AWS_S3_BUCKET"));
+        System.out.println("AWS_SES_FROM_EMAIL = " + System.getenv("AWS_SES_FROM_EMAIL"));
+        System.out.println("AWS_SES_TEST_EMAIL = " + System.getenv("AWS_SES_TEST_EMAIL"));
+        System.out.println("AWS_SES_REGION = " + System.getenv("AWS_SES_REGION"));
+        System.out.println("AWS_SES_ACCESS_KEY_ID = " + System.getenv("AWS_SES_ACCESS_KEY_ID"));
+        System.out.println("AWS_SES_SECRET_ACCESS_KEY = " + System.getenv("AWS_SES_SECRET_ACCESS_KEY"));
+        System.out.println("SERPAPI_KEY = " + System.getenv("SERPAPI_KEY"));
+        System.out.println("RAPIDAPI_KEY = " + System.getenv("RAPIDAPI_KEY"));
     }
 
 }
