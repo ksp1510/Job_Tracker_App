@@ -12,7 +12,7 @@ import com.jobtracker.service.JobDataSeedService;
 
 import jakarta.annotation.PostConstruct;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.jobtracker")
 @EnableScheduling
 public class JobtrackerBackendApplication {
 
