@@ -46,6 +46,7 @@ public class JobtrackerBackendApplication {
     @PostConstruct
     public void printMongoUri() {
         System.out.println("MONGODB_URI = " + System.getenv("MONGODB_URI"));
+        System.out.println("MONGODB_DB = " + System.getenv("MONGODB_DB"));
         System.out.println("JWT_SECRET = " + System.getenv("JWT_SECRET"));
         System.out.println("AWS_ACCESS_KEY_ID = " + System.getenv("AWS_ACCESS_KEY_ID"));
         System.out.println("AWS_SECRET_ACCESS_KEY = " + System.getenv("AWS_SECRET_ACCESS_KEY"));
