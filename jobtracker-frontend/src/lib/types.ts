@@ -31,12 +31,12 @@ export interface Application {
 }
 
 export enum ApplicationStatus {
-    APPLIED = 'Applied',
-    INTERVIEW = 'Interview',
-    ASSESSMENT = 'Assessment',
-    OFFER = 'Offer',
-    REJECTED = 'Rejected',
-    WITHDRAWN = 'Withdrawn',
+    APPLIED = 'APPLIED',
+    INTERVIEW = 'INTERVIEW',
+    ASSESSMENT = 'ASSESSMENT',
+    OFFER = 'OFFER',
+    REJECTED = 'REJECTED',
+    WITHDRAWN = 'WITHDRAWN',
 }
 
 export interface JobListing {
