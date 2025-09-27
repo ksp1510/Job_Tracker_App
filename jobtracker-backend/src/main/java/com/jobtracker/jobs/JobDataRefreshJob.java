@@ -35,7 +35,7 @@ public class JobDataRefreshJob {
             
             // Fetch new jobs from external APIs
             // TODO: Add popular search terms/locations
-            externalJobApiService.fetchJobsFromAllSources("Software Engineer", "Remote")
+            externalJobApiService.fetchJobsFromAllSources("Software Engineer", "Toronto")
                     .thenRun(() -> System.out.println("✅ Job data refresh completed"));
             
         } catch (Exception e) {

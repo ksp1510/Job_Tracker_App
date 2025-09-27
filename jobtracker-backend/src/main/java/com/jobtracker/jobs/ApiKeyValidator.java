@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 
-import com.jobtracker.config.ApiKeyConfig;
+import com.jobtracker.config.ApiKeyConfiguration;
 
 import lombok.val;
 
@@ -25,8 +25,6 @@ public class ApiKeyValidator {
     @Value("${app.api.rapidapi.key}")
     private String rapidApiKey;
     
-    @Value("${app.api.theirstack.key}")
-    private String theirStackKey;
     
     @Scheduled(fixedRate = 86400000) // Daily check
     public void checkApiKeyHealth() {
@@ -39,10 +37,6 @@ public class ApiKeyValidator {
             // Send alert to administrators
             logger.warn("RapidAPI key may be expired");
         }
-        if (!testTheirstackApiKey()) {
-            // Send alert to administrators
-            logger.warn("TheirstackAPI key may be expired");
-        }
     }
 
     private boolean testSerpApiKey() {
@@ -53,10 +47,5 @@ public class ApiKeyValidator {
     private boolean testRapidApiKey() {
         // Test RapidAPI key
         return rapidApiKey != null && !rapidApiKey.isEmpty();
-    }
-
-    private boolean testTheirstackApiKey() {
-        // Test TheirStackAPI key
-        return theirStackKey != null && !theirStackKey.isEmpty();
     }
 }

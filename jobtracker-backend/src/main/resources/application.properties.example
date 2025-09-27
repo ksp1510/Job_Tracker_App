@@ -1,29 +1,17 @@
-spring.application.name=jobtracker-backend
-logging.level.org.springframework.data.mongodb.core.MongoTemplate=DEBUG
-logging.level.org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory=DEBUG
+# Log levels
+logging.level.root=INFO
+logging.level.com.jobtracker=DEBUG    # turn up verbosity for your code
+logging.level.org.springframework.web=DEBUG
+logging.level.org.springframework.security=INFO
 
-spring.data.mongodb.uri=${MONGODB_URI}
-spring.data.mongodb.database=${MONGODB_DB}
+# Write logs to a file and to the console
+logging.file.name=/var/log/jobtracker/jobtracker-backend.log
+# (alternatively logging.file.path=logs to create a “logs” directory in the working dir)
 
+# Pretty patterns (timestamp, level, thread, logger name, message)
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n
 
-# AWS SES
-cloud.aws.credentials.access-key=${CLOUD_AWS_CREDENTIALS_ACCESS_KEY}
-cloud.aws.credentials.secret-key=${CLOUD_AWS_CREDENTIALS_SECRET_KEY}
-cloud.aws.region.static=${CLOUD_AWS_REGION_STATIC}
-
-
-# AI Features Toggle
-app.ai.enabled=${AI_ENABLED:false}
-
-# External Job API Keys
-app.jobs.rapidapi.key=${RAPID_API_KEY:}
-app.jobs.rapidapi.host=${RAPID_API_HOST:jsearch.p.rapidapi.com}
-
-# AI Service Configuration (if AI is enabled)
-app.ai.openai.api-key=${OPENAI_API_KEY:}
-app.ai.openai.model=${OPENAI_MODEL:gpt-3.5-turbo}
-
-# Job Data Refresh Settings
-app.jobs.refresh.enabled=${JOB_REFRESH_ENABLED:true}
-app.jobs.refresh.interval=${JOB_REFRESH_INTERVAL:21600000}
-app.jobs.seed.enabled=${JOB_SEED_ENABLED:true}
+# Include detailed error messages and stacktraces in the response (helpful during integration)
+server.error.include-message=always
+server.error.include-stacktrace=always

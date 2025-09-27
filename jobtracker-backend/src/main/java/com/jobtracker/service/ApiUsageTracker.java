@@ -10,7 +10,6 @@ public class ApiUsageTracker {
     private final MeterRegistry meterRegistry;
     private final Counter serpApiCalls;
     private final Counter rapidApiCalls;
-    private final Counter theirStackApiCalls;
     
     public ApiUsageTracker(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
@@ -19,9 +18,6 @@ public class ApiUsageTracker {
             .register(meterRegistry);
         this.rapidApiCalls = Counter.builder("api.calls")
             .tag("provider", "rapidapi")
-            .register(meterRegistry);
-        this.theirStackApiCalls = Counter.builder("api.calls")
-            .tag("provider", "theirstack")
             .register(meterRegistry);
     }
     
