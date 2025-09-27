@@ -18,9 +18,11 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+      baseURL: process.env.NEXT_PUBLIC_API_URL,
       timeout: 10000,
     });
+
+    console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
 
     // Request interceptor to add auth token
     this.client.interceptors.request.use(
