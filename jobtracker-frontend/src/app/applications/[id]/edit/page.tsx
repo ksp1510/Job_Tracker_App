@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/applications/new/page.tsx
+// src/app/applications/[id]/edit/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,18 +9,16 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { Application, ApplicationStatus } from '@/lib/types';
 import { useForm } from 'react-hook-form';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
   BuildingOfficeIcon,
   BriefcaseIcon,
   MapPinIcon,
   CurrencyDollarIcon,
-  DocumentTextIcon,
   LinkIcon,
   UserIcon,
   CalendarIcon,
-  PaperClipIcon,
 } from '@heroicons/react/24/outline';
 
 interface ApplicationForm {
@@ -39,44 +37,47 @@ interface ApplicationForm {
   assessmentDate?: string;
 }
 
-export default function NewApplicationPage() {
+export default function EditApplicationPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const params = useParams();
   const queryClient = useQueryClient();
-  const jobId = searchParams.get('jobId');
+  const applicationId = params.id as string;
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ApplicationForm>({
-    defaultValues: {
-      status: ApplicationStatus.APPLIED,
-      appliedDate: new Date().toISOString().split('T')[0],
-    },
-  });
-
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ApplicationForm>();
   const watchedStatus = watch('status');
 
-  // Fetch job details if jobId is provided
-  const { data: jobDetails } = useQuery({
-    queryKey: ['job', jobId],
-    queryFn: () => apiClient.getJob(jobId!),
-    enabled: !!jobId,
+  // Fetch application details
+  const { data: application, isLoading } = useQuery({
+    queryKey: ['application', applicationId],
+    queryFn: () => apiClient.getApplication(applicationId),
+    enabled: isAuthenticated && !!applicationId,
   });
 
-  // Pre-fill form with job details
+  // Populate form when application data is loaded
   useEffect(() => {
-    if (jobDetails) {
-      setValue('companyName', jobDetails.company);
-      setValue('jobTitle', jobDetails.title);
-      setValue('jobLocation', jobDetails.location);
-      setValue('jobDescription', jobDetails.description);
-      setValue('jobLink', jobDetails.applyUrl || '');
-      setValue('salary', jobDetails.salary || jobDetails.salaryRange || '');
+    if (application) {
+      reset({
+        companyName: application.companyName,
+        jobTitle: application.jobTitle,
+        jobLocation: application.jobLocation || '',
+        jobDescription: application.jobDescription || '',
+        jobLink: application.jobLink || '',
+        recruiterContact: application.recruiterContact || '',
+        status: application.status,
+        salary: application.salary || '',
+        notes: application.notes || '',
+        appliedDate: application.appliedDate?.split('T')[0] || '',
+        referral: application.referral || '',
+        interviewDate: application.interviewDate?.slice(0, 16) || '',
+        assessmentDate: application.assessmentDate?.slice(0, 16) || '',
+      });
     }
-  }, [jobDetails, setValue]);
+  }, [application, reset]);
 
-  const createApplicationMutation = useMutation({
+  const updateApplicationMutation = useMutation({
     mutationFn: (data: ApplicationForm) => {
-      const applicationData: Omit<Application, 'id' | 'userId'> = {
+      const updateData: Partial<Application> = {
         companyName: data.companyName,
         jobTitle: data.jobTitle,
         jobLocation: data.jobLocation,
@@ -91,24 +92,48 @@ export default function NewApplicationPage() {
         interviewDate: data.interviewDate,
         assessmentDate: data.assessmentDate,
       };
-      return apiClient.createApplication(applicationData);
+      return apiClient.updateApplication(applicationId, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
-      toast.success('Application created successfully!');
-      router.push('/applications');
+      queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
+      toast.success('Application updated successfully!');
+      router.push(`/applications/${applicationId}`);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create application');
+      toast.error(error.response?.data?.message || 'Failed to update application');
     },
   });
 
   const onSubmit = (data: ApplicationForm) => {
-    createApplicationMutation.mutate(data);
+    updateApplicationMutation.mutate(data);
   };
 
   if (!isAuthenticated) {
     return <div>Loading...</div>;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+            <div className="bg-white shadow rounded-lg p-6">
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i}>
+                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -118,9 +143,9 @@ export default function NewApplicationPage() {
       <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="px-4 py-6 sm:px-0">
-          <h1 className="text-2xl font-bold text-gray-900">Add New Application</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Application</h1>
           <p className="mt-1 text-gray-600">
-            Track your job application and stay organized
+            Update your application details
           </p>
         </div>
 
@@ -139,7 +164,6 @@ export default function NewApplicationPage() {
                     {...register('companyName', { required: 'Company name is required' })}
                     type="text"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="e.g. Google, Microsoft"
                   />
                 </div>
                 {errors.companyName && (
@@ -157,7 +181,6 @@ export default function NewApplicationPage() {
                     {...register('jobTitle', { required: 'Job title is required' })}
                     type="text"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="e.g. Senior Software Engineer"
                   />
                 </div>
                 {errors.jobTitle && (
@@ -177,7 +200,6 @@ export default function NewApplicationPage() {
                     {...register('jobLocation')}
                     type="text"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="e.g. San Francisco, CA"
                   />
                 </div>
               </div>
@@ -192,7 +214,6 @@ export default function NewApplicationPage() {
                     {...register('salary')}
                     type="text"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="e.g. $120,000 or 100k-150k"
                   />
                 </div>
               </div>
@@ -275,7 +296,6 @@ export default function NewApplicationPage() {
                     {...register('jobLink')}
                     type="url"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="https://..."
                   />
                 </div>
               </div>
@@ -290,7 +310,6 @@ export default function NewApplicationPage() {
                     {...register('recruiterContact')}
                     type="text"
                     className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="recruiter@company.com"
                   />
                 </div>
               </div>
@@ -306,7 +325,6 @@ export default function NewApplicationPage() {
                   {...register('referral')}
                   type="text"
                   className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Who referred you?"
                 />
               </div>
             </div>
@@ -320,7 +338,6 @@ export default function NewApplicationPage() {
                   {...register('jobDescription')}
                   rows={4}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Paste the job description here..."
                 />
               </div>
             </div>
@@ -334,7 +351,6 @@ export default function NewApplicationPage() {
                   {...register('notes')}
                   rows={3}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Any additional notes or thoughts..."
                 />
               </div>
             </div>
@@ -350,10 +366,10 @@ export default function NewApplicationPage() {
               </button>
               <button
                 type="submit"
-                disabled={createApplicationMutation.isPending}
+                disabled={updateApplicationMutation.isPending}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
               >
-                {createApplicationMutation.isPending ? 'Creating...' : 'Create Application'}
+                {updateApplicationMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
