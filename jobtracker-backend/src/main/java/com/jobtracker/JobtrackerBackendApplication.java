@@ -34,14 +34,14 @@ public class JobtrackerBackendApplication {
         System.out.println("✅ Dummy user inserted!");
     };
 }*/
-    @Bean
+    /*@Bean
     @ConditionalOnProperty(name = "app.jobs.seed.enabled", havingValue = "true")
     CommandLineRunner seedJobs(JobDataSeedService seedService) {
         return args -> {
             // Seed will run through scheduled job instead
             System.out.println("🌱 Job seeding enabled");
         };
-    }
+    }*/
 
     @PostConstruct
     public void printMongoUri() {

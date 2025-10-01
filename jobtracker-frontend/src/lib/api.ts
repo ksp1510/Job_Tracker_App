@@ -10,7 +10,8 @@ import {
   SavedJob, 
   Notification, 
   JobSearchParams,
-  PaginatedResponse 
+  PaginatedResponse,
+  User 
 } from './types';
 
 class ApiClient {
@@ -58,6 +59,11 @@ class ApiClient {
 
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await this.client.post('/auth/login', data);
+    return response.data;
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.client.get('/users/me');
     return response.data;
   }
 

@@ -94,6 +94,8 @@ export enum NotificationChannel {
 export interface AuthResponse {
     token: string;
     role: string;
+    firstName: string;
+    lastName: string;
 }
 
 export interface RegisterRequest {

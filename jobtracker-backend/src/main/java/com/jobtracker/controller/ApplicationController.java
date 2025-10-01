@@ -71,7 +71,8 @@ public class ApplicationController {
     // 🔹 Update application
     @PutMapping("/{id}")
     public ResponseEntity<Application> update(@Valid @RequestBody Application appDetails,
-            @PathVariable String id) {
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authHeader) {
         return ResponseEntity.ok(service.update(id, appDetails));
     }
 
