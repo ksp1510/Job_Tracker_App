@@ -225,7 +225,7 @@ export default function NotificationsPage() {
             </div>
           ) : displayedNotifications.length === 0 ? (
             <div className="text-center py-12">
-              <BellIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <BellIcon className="mx-auto h-12 w-12 text-gray-700" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
                 {activeTab === 'unread' ? 'No unread notifications' : 'No notifications yet'}
               </h3>
@@ -270,7 +270,7 @@ export default function NotificationsPage() {
                       {!notification.read && (
                         <button
                           onClick={() => markAsReadMutation.mutate(notification.id)}
-                          className="p-1 text-gray-400 hover:text-green-600"
+                          className="p-1 text-gray-900 hover:text-green-600"
                           title="Mark as read"
                         >
                           <CheckIcon className="h-4 w-4" />
@@ -278,7 +278,7 @@ export default function NotificationsPage() {
                       )}
                       <button
                         onClick={() => deleteNotificationMutation.mutate(notification.id)}
-                        className="p-1 text-gray-400 hover:text-red-600"
+                        className="p-1 text-gray-900 hover:text-red-600"
                         title="Delete notification"
                       >
                         <XMarkIcon className="h-4 w-4" />
@@ -299,7 +299,7 @@ export default function NotificationsPage() {
                 <h3 className="text-lg font-medium text-gray-900">Create Reminder</h3>
                 <button
                   onClick={() => setShowReminderForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-900 hover:text-gray-600"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
@@ -308,12 +308,12 @@ export default function NotificationsPage() {
               <form onSubmit={handleSubmit(onSubmitReminder)} className="space-y-4">
                 {/* Reminder Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-900">
                     Reminder Type
                   </label>
                   <select
                     {...register('type', { required: 'Please select a reminder type' })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   >
                     <option value="">Select type</option>
                     <option value="interview">Interview Reminder</option>
@@ -327,14 +327,14 @@ export default function NotificationsPage() {
 
                 {/* Application Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-900">
                     Related Application {watchedType === 'custom' ? '(Optional)' : ''}
                   </label>
                   <select
                     {...register('applicationId', { 
                       required: watchedType !== 'custom' ? 'Please select an application' : false 
                     })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   >
                     <option value="">Select application</option>
                     {applications.map((app: Application) => (
@@ -344,20 +344,20 @@ export default function NotificationsPage() {
                     ))}
                   </select>
                   {errors.applicationId && (
-                    <p className="mt-1 text-sm text-red-600">{errors.applicationId.message}</p>
+                    <p className="text-gray-900 mt-1 text-sm text-red-600">{errors.applicationId.message}</p>
                   )}
                 </div>
 
                 {/* Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-900">
                     Date
                   </label>
                   <input
                     {...register('date', { required: 'Date is required' })}
                     type="date"
                     min={new Date().toISOString().split('T')[0]}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                   {errors.date && (
                     <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>
@@ -366,13 +366,13 @@ export default function NotificationsPage() {
 
                 {/* Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-900">
                     Time
                   </label>
                   <input
                     {...register('time', { required: 'Time is required' })}
                     type="time"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                   {errors.time && (
                     <p className="mt-1 text-sm text-red-600">{errors.time.message}</p>
@@ -381,7 +381,7 @@ export default function NotificationsPage() {
 
                 {/* Message */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-900">
                     Custom Message {watchedType !== 'custom' ? '(Optional)' : ''}
                   </label>
                   <textarea
@@ -408,7 +408,7 @@ export default function NotificationsPage() {
                   <button
                     type="button"
                     onClick={() => setShowReminderForm(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-900 bg-white hover:bg-gray-50"
                   >
                     Cancel
                   </button>

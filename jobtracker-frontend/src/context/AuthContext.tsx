@@ -6,6 +6,8 @@ import { createContext, useContext, useEffect, useState, ReactNode, JSX } from '
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/api';
+import { AuthResponse } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
 import { LoginRequest, RegisterRequest, User } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -14,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  getCurrentUser: () => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -36,6 +39,70 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // Fetch profile if there is a token but no user details
+  const { data: profile, isError } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: apiClient.getCurrentUser,
+    enabled: !!Cookies.get('token') && user === null,
+  });
+  useEffect(() => {
+    if (profile) setUser(profile);
+  }, [profile]);
+
+  useEffect(() => {
+    if (isError) {
+      Cookies.remove('token');
+      setUser(null);
+    }
+  }, [isError]);
+  
+  // On mount decode token to set minimal user info
+  useEffect(() => {
+    const token = Cookies.get('token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUser((prev) => ({
+        userId: payload.sub,
+        firstName: payload.firstName ?? prev?.firstName ?? '',
+        lastName: payload.lastName ?? prev?.lastName ?? '',
+        email: payload.email ?? '',
+        role: payload.role ?? 'USER',
+        notificationEnabled: true,
+        emailNotificationsEnabled: true,
+        inAppNotificationsEnabled: true,
+      }));
+    }
+    setIsLoading(false);
+  }, []);
+
+  const login = async (data: LoginRequest): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.login(data);
+      Cookies.set('token', response.token, { expires: 7, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+
+      setUser({
+        userId: JSON.parse(atob(response.token.split('.')[1])).sub,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        email: data.email,
+        role: response.role,
+        notificationEnabled: true,
+        emailNotificationsEnabled: true,
+        inAppNotificationsEnabled: true,
+      });
+
+      toast.success('Login successful!');
+      console.log(user?.firstName);
+      router.push('/dashboard');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Login failed');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -64,40 +131,6 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     setIsLoading(false);
   }, []);
 
-  const login = async (data: LoginRequest): Promise<void> => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.login(data);
-      
-      // Store token in cookie
-      Cookies.set('token', response.token, { 
-        expires: 7, // 7 days
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      });
-
-      // Decode token to get user info
-      const payload = JSON.parse(atob(response.token.split('.')[1]));
-      setUser({
-        userId: payload.sub,
-        firstName: 'User',
-        lastName: 'Name', 
-        email: data.email,
-        role: response.role,
-        notificationEnabled: true,
-        emailNotificationsEnabled: true,
-        inAppNotificationsEnabled: true,
-      });
-
-      toast.success('Login successful!');
-      router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const register = async (data: RegisterRequest): Promise<void> => {
     try {
@@ -107,6 +140,20 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
       router.push('/auth/login');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getCurrentUser = async (): Promise<User> => {
+    try {
+      setIsLoading(true);
+      const response = await apiClient.getCurrentUser();
+      setUser(response);
+      return response;
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to get current user');
       throw error;
     } finally {
       setIsLoading(false);
@@ -126,6 +173,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     login,
     register,
     logout,
+    getCurrentUser,
     isAuthenticated: !!user,
   };
 

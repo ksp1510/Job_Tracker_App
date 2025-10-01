@@ -77,7 +77,7 @@ export const Navbar = () => {
                     <item.icon className="w-4 h-4 mr-2" />
                     {item.name}
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      <span className="flex -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
@@ -102,7 +102,7 @@ export const Navbar = () => {
 
               {/* Profile dropdown */}
               {isProfileOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                <div className="origin-top-right flex right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
                   <div className="px-4 py-2 text-xs text-gray-500 border-b">
                     {user?.email}
                   </div>

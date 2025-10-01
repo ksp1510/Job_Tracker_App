@@ -57,7 +57,11 @@ public class ExternalJobApiService {
         this.objectMapper = new ObjectMapper();
     }
 
-
+    public void fetchJobsFromAllSources(String query, String location, String jobType,
+                                        Double minSalary, Double maxSalary, List<String> skills,
+                                        int page, int size, String userId) {
+        
+    }
 
     /**
      * Debug method to test API key configuration

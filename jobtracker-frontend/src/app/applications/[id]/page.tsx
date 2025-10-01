@@ -172,7 +172,7 @@ export default function ApplicationDetailPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {/* Company */}
               <div className="flex items-center space-x-3">
-                <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                <BuildingOfficeIcon className="h-5 w-5 text-gray-700" />
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Company</dt>
                   <dd className="text-lg text-gray-900">{application.companyName}</dd>
@@ -182,7 +182,7 @@ export default function ApplicationDetailPage() {
               {/* Location */}
               {application.jobLocation && (
                 <div className="flex items-center space-x-3">
-                  <MapPinIcon className="h-5 w-5 text-gray-400" />
+                  <MapPinIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Location</dt>
                     <dd className="text-lg text-gray-900">{application.jobLocation}</dd>
@@ -193,7 +193,7 @@ export default function ApplicationDetailPage() {
               {/* Salary */}
               {application.salary && (
                 <div className="flex items-center space-x-3">
-                  <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                  <CurrencyDollarIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Salary</dt>
                     <dd className="text-lg text-gray-900">{application.salary}</dd>
@@ -204,7 +204,7 @@ export default function ApplicationDetailPage() {
               {/* Applied Date */}
               {application.appliedDate && (
                 <div className="flex items-center space-x-3">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <CalendarIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Applied Date</dt>
                     <dd className="text-lg text-gray-900">{formatDate(application.appliedDate)}</dd>
@@ -215,7 +215,7 @@ export default function ApplicationDetailPage() {
               {/* Interview Date */}
               {application.interviewDate && (
                 <div className="flex items-center space-x-3">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <CalendarIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Interview Date</dt>
                     <dd className="text-lg text-gray-900">{formatDateTime(application.interviewDate)}</dd>
@@ -226,7 +226,7 @@ export default function ApplicationDetailPage() {
               {/* Assessment Date */}
               {application.assessmentDate && (
                 <div className="flex items-center space-x-3">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <CalendarIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Assessment Date</dt>
                     <dd className="text-lg text-gray-900">{formatDateTime(application.assessmentDate)}</dd>
@@ -237,7 +237,7 @@ export default function ApplicationDetailPage() {
               {/* Recruiter Contact */}
               {application.recruiterContact && (
                 <div className="flex items-center space-x-3">
-                  <UserIcon className="h-5 w-5 text-gray-400" />
+                  <UserIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Recruiter Contact</dt>
                     <dd className="text-lg text-gray-900">{application.recruiterContact}</dd>
@@ -248,7 +248,7 @@ export default function ApplicationDetailPage() {
               {/* Referral */}
               {application.referral && (
                 <div className="flex items-center space-x-3">
-                  <UserIcon className="h-5 w-5 text-gray-400" />
+                  <UserIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Referral</dt>
                     <dd className="text-lg text-gray-900">{application.referral}</dd>
@@ -259,7 +259,7 @@ export default function ApplicationDetailPage() {
               {/* Job Link */}
               {application.jobLink && (
                 <div className="flex items-center space-x-3">
-                  <LinkIcon className="h-5 w-5 text-gray-400" />
+                  <LinkIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Job Link</dt>
                     <dd className="text-lg text-gray-900">
@@ -281,7 +281,7 @@ export default function ApplicationDetailPage() {
             {application.jobDescription && (
               <div className="mt-8">
                 <div className="flex items-center space-x-2 mb-3">
-                  <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                  <DocumentTextIcon className="h-5 w-5 text-gray-700" />
                   <h3 className="text-lg font-medium text-gray-900">Job Description</h3>
                 </div>
                 <div className="prose max-w-none">
@@ -294,7 +294,7 @@ export default function ApplicationDetailPage() {
             {application.notes && (
               <div className="mt-8">
                 <div className="flex items-center space-x-2 mb-3">
-                  <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                  <DocumentTextIcon className="h-5 w-5 text-gray-700" />
                   <h3 className="text-lg font-medium text-gray-900">Notes</h3>
                 </div>
                 <div className="prose max-w-none">

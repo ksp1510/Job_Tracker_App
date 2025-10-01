@@ -78,6 +78,7 @@ export default function EditApplicationPage() {
   const updateApplicationMutation = useMutation({
     mutationFn: (data: ApplicationForm) => {
       const updateData: Partial<Application> = {
+        userId: application?.userId,
         companyName: data.companyName,
         jobTitle: data.jobTitle,
         jobLocation: data.jobLocation,
@@ -155,15 +156,15 @@ export default function EditApplicationPage() {
             {/* Basic Information */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Company Name *
-                </label>
                 <div className="mt-1 relative">
-                  <BuildingOfficeIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <BuildingOfficeIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Company Name*
+                  </label>
                   <input
                     {...register('companyName', { required: 'Company name is required' })}
                     type="text"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
                 {errors.companyName && (
@@ -172,15 +173,15 @@ export default function EditApplicationPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Job Title *
-                </label>
                 <div className="mt-1 relative">
-                  <BriefcaseIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <BriefcaseIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Job Title *
+                  </label>
                   <input
                     {...register('jobTitle', { required: 'Job title is required' })}
                     type="text"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
                 {errors.jobTitle && (
@@ -191,29 +192,29 @@ export default function EditApplicationPage() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Location
-                </label>
                 <div className="mt-1 relative">
-                  <MapPinIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <MapPinIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Location
+                  </label>
                   <input
                     {...register('jobLocation')}
                     type="text"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Salary
-                </label>
                 <div className="mt-1 relative">
-                  <CurrencyDollarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <CurrencyDollarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Salary
+                  </label>
                   <input
                     {...register('salary')}
                     type="text"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -221,12 +222,12 @@ export default function EditApplicationPage() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-900">
                   Application Status *
                 </label>
                 <select
                   {...register('status', { required: 'Status is required' })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value={ApplicationStatus.APPLIED}>Applied</option>
                   <option value={ApplicationStatus.INTERVIEW}>Interview</option>
@@ -238,15 +239,15 @@ export default function EditApplicationPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Applied Date
-                </label>
                 <div className="mt-1 relative">
-                  <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Applied Date
+                  </label>
                   <input
                     {...register('appliedDate')}
                     type="date"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -255,15 +256,15 @@ export default function EditApplicationPage() {
             {/* Conditional Fields */}
             {watchedStatus === ApplicationStatus.INTERVIEW && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Interview Date
-                </label>
                 <div className="mt-1 relative">
-                  <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Interview Date
+                  </label>
                   <input
                     {...register('interviewDate')}
                     type="datetime-local"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -271,15 +272,15 @@ export default function EditApplicationPage() {
 
             {watchedStatus === ApplicationStatus.ASSESSMENT && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Assessment Date
-                </label>
                 <div className="mt-1 relative">
-                  <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Assessment Date
+                  </label>
                   <input
                     {...register('assessmentDate')}
                     type="datetime-local"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -287,70 +288,70 @@ export default function EditApplicationPage() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Job Link
-                </label>
                 <div className="mt-1 relative">
-                  <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <LinkIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Job Link
+                  </label>
                   <input
                     {...register('jobLink')}
                     type="url"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Recruiter Contact
-                </label>
                 <div className="mt-1 relative">
-                  <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <label className="block text-sm font-medium text-gray-900">
+                  <UserIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                    Recruiter Contact
+                  </label>
                   <input
                     {...register('recruiterContact')}
                     type="text"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Referral
-              </label>
               <div className="mt-1 relative">
-                <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <label className="block text-sm font-medium text-gray-900">
+                  <UserIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  Referral
+                </label>
                 <input
                   {...register('referral')}
                   type="text"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-900">
                 Job Description
               </label>
               <div className="mt-1">
                 <textarea
                   {...register('jobDescription')}
                   rows={4}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="text-gray-900 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-900">
                 Notes
               </label>
               <div className="mt-1">
                 <textarea
                   {...register('notes')}
                   rows={3}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="text-gray-900 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
             </div>
@@ -360,7 +361,7 @@ export default function EditApplicationPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-900 bg-white hover:bg-gray-50"
               >
                 Cancel
               </button>

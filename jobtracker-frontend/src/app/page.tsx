@@ -96,7 +96,7 @@ export default function HomePage() {
             </main>
           </div>
         </div>
-        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
+        <div className="lg:flex lg:inset-y-0 lg:right-0 lg:w-1/2">
           <div className="h-56 w-full sm:h-72 md:h-96 lg:w-full lg:h-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center">
             <div className="text-white text-6xl font-bold opacity-20">📊</div>
           </div>
@@ -122,7 +122,7 @@ export default function HomePage() {
             <dl className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
               <div className="relative">
                 <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                  <div className="flex flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
                     <DocumentDuplicateIcon className="h-6 w-6" />
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
@@ -137,7 +137,7 @@ export default function HomePage() {
 
               <div className="relative">
                 <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                  <div className="flex flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
                     <MagnifyingGlassIcon className="h-6 w-6" />
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
@@ -152,7 +152,7 @@ export default function HomePage() {
 
               <div className="relative">
                 <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                  <div className="flex flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
                     <BellIcon className="h-6 w-6" />
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
@@ -167,7 +167,7 @@ export default function HomePage() {
 
               <div className="relative">
                 <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
+                  <div className="flex flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white">
                     <ChartBarIcon className="h-6 w-6" />
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">
