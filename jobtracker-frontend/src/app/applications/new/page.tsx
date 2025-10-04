@@ -18,6 +18,7 @@ import {
   CurrencyDollarIcon,
   DocumentTextIcon,
   LinkIcon,
+  PencilSquareIcon,
   UserIcon,
   CalendarIcon,
   PaperClipIcon,
@@ -131,7 +132,7 @@ export default function NewApplicationPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <BuildingOfficeIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <BuildingOfficeIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Company Name *
                 </label>
                 <div className="mt-1 flex">
@@ -149,7 +150,7 @@ export default function NewApplicationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <BriefcaseIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <BriefcaseIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Job Title *
                 </label>
                 <div className="mt-1 flex">
@@ -169,7 +170,7 @@ export default function NewApplicationPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <MapPinIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <MapPinIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Location
                 </label>
                 <div className="mt-1 flex">
@@ -184,7 +185,7 @@ export default function NewApplicationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <CurrencyDollarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CurrencyDollarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Salary
                 </label>
                 <div className="mt-1 flex">
@@ -201,6 +202,7 @@ export default function NewApplicationPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-900">
+                  <PencilSquareIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Application Status *
                 </label>
                 <select
@@ -218,7 +220,7 @@ export default function NewApplicationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Applied Date
                 </label>
                 <div className="mt-1 flex">
@@ -235,7 +237,7 @@ export default function NewApplicationPage() {
             {watchedStatus === ApplicationStatus.INTERVIEW && (
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-5 w-5 text-gray-700" />
                   Interview Date
                 </label>
                 <div className="mt-1 flex">
@@ -251,7 +253,7 @@ export default function NewApplicationPage() {
             {watchedStatus === ApplicationStatus.ASSESSMENT && (
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Assessment Date
                 </label>
                 <div className="mt-1 flex">
@@ -267,7 +269,7 @@ export default function NewApplicationPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <LinkIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <LinkIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Job Link
                 </label>
                 <div className="mt-1 flex">
@@ -282,7 +284,7 @@ export default function NewApplicationPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-900">
-                  <PaperClipIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <PaperClipIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Recruiter Contact
                 </label>
                 <div className="mt-1 flex">
@@ -298,7 +300,7 @@ export default function NewApplicationPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-900">
-                <UserIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                <UserIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                 Referral
               </label>
               <div className="mt-1 flex">
@@ -313,7 +315,7 @@ export default function NewApplicationPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-900">
-                <DocumentTextIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                <DocumentTextIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                 Job Description
               </label>
               <div className="mt-1">
@@ -328,7 +330,7 @@ export default function NewApplicationPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-900">
-                <DocumentTextIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                <DocumentTextIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                 Notes
               </label>
               <div className="mt-1">

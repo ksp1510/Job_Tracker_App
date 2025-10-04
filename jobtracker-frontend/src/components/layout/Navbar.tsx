@@ -88,11 +88,11 @@ export const Navbar = () => {
           </div>
 
           {/* Right section - User menu */}
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+          <div className="hidden sm:ml-6 sm:absolute sm:items-center">
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="absolute items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <span className="ml-2 text-gray-700">
@@ -102,13 +102,13 @@ export const Navbar = () => {
 
               {/* Profile dropdown */}
               {isProfileOpen && (
-                <div className="origin-top-right flex right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
                   <div className="px-4 py-2 text-xs text-gray-500 border-b">
                     {user?.email}
                   </div>
                   <Link
                     href="/settings"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="absolute items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setIsProfileOpen(false)}
                   >
                     <Cog6ToothIcon className="w-4 h-4 mr-2" />
@@ -119,7 +119,7 @@ export const Navbar = () => {
                       setIsProfileOpen(false);
                       logout();
                     }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="absolute items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
                     Sign out

@@ -24,8 +24,8 @@ public class JobDataRefreshJob {
 
     /**
      * Refresh job data every 6 hours
-     */
-    @Scheduled(fixedRate = 21600000) // 6 hours
+     
+    //@Scheduled(fixedRate = 21600000) // 6 hours
     public void refreshJobData() {
         try {
             System.out.println("🔄 Starting job data refresh...");
@@ -41,13 +41,13 @@ public class JobDataRefreshJob {
         } catch (Exception e) {
             System.err.println("❌ Job data refresh failed: " + e.getMessage());
         }
-    }
+    }*/
 
     /**
      * One-time seed on startup (development only)
-     */
+     
     @Scheduled(fixedDelay = Long.MAX_VALUE, initialDelay = 5000)
     public void seedInitialData() {
         seedService.seedSampleJobs();
-    }
+    }*/
 }
