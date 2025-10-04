@@ -76,6 +76,23 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Link
+            href="/jobs"
+            className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg shadow hover:shadow-md transition-shadow"
+          >
+            <div>
+              <span className="rounded-lg inline-flex p-3 bg-blue-50 text-blue-600 group-hover:bg-blue-100">
+                <MagnifyingGlassIcon className="h-6 w-6" />
+              </span>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-lg font-medium text-gray-900">Search Jobs</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Find new opportunities
+              </p>
+            </div>
+          </Link>
+          
           <Link
             href="/applications/new"
             className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg shadow hover:shadow-md transition-shadow"
@@ -89,23 +106,6 @@ export default function DashboardPage() {
               <h3 className="text-lg font-medium text-gray-900">Add Application</h3>
               <p className="mt-2 text-sm text-gray-500">
                 Track a new job application
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/jobs"
-            className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div>
-              <span className="rounded-lg inline-flex p-3 bg-blue-50 text-blue-600 group-hover:bg-blue-100">
-                <MagnifyingGlassIcon className="h-6 w-6" />
-              </span>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-lg font-medium text-gray-900">Search Jobs</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Find new opportunities
               </p>
             </div>
           </Link>

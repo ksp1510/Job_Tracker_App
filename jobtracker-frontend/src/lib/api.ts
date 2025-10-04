@@ -84,7 +84,7 @@ class ApiClient {
     return response.data;
   }
 
-  async createApplication(data: Omit<Application, 'id' | 'userId'>): Promise<Application> {
+  async createApplication(data: Application): Promise<Application> {
     const response = await this.client.post('/applications', data);
     return response.data;
   }
@@ -157,7 +157,8 @@ class ApiClient {
   }
 
   async saveJob(id: string, notes?: string): Promise<SavedJob> {
-    const response = await this.client.post(`/jobs/${id}/save`, { notes });
+    const userId = Cookies.get('userId');
+    const response = await this.client.post(`/jobs/${id}/save`, { notes, userId });
     return response.data;
   }
 
