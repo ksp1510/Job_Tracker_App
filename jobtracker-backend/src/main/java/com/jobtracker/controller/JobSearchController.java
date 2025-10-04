@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/jobs")
@@ -26,7 +27,32 @@ public class JobSearchController {
     }
 
     /**
-     * Search jobs with filters
+     * Check if user has cached search results
+     */
+    @GetMapping("/cache/status")
+    public ResponseEntity<CacheStatusResponse> checkCacheStatus(
+            @RequestHeader("Authorization") String authHeader) {
+        String userId = extractUserId(authHeader);
+        boolean hasCached = jobSearchService.hasCachedResults(userId);
+        return ResponseEntity.ok(new CacheStatusResponse(hasCached));
+    }
+
+    /*
+     * Get cached search results (for when user returns to application without triggering a new search)
+     */
+    @GetMapping("/cache")
+    public ResponseEntity<Page<JobListing>> getCachedSearch(
+            @RequestHeader(defaultValue = "0") int page,
+            @RequestHeader(defaultValue = "10") int size,
+            @RequestHeader("Authorization") String authHeader) {
+        String userId = extractUserId(authHeader);
+        Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size);
+        return cachedResults.map(ResponseEntity::ok)
+                            .orElse(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Search jobs with filters (triggers API calls)
      */
     @GetMapping("/search")
     public ResponseEntity<Page<JobListing>> searchJobs(
@@ -45,6 +71,17 @@ public class JobSearchController {
                 query, location, jobType, minSalary, maxSalary, skills, page, size, userId);
         
         return ResponseEntity.ok(jobs);
+    }
+
+    /**
+     * Clear cached search results
+     */
+    @DeleteMapping("/cache")
+    public ResponseEntity<Void> clearCache(
+            @RequestHeader("Authorization") String authHeader) {
+        String userId = extractUserId(authHeader);
+        jobSearchService.clearCache(userId);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -118,5 +155,10 @@ public class JobSearchController {
     @Data
     static class SaveJobRequest {
         private String notes;
+    }
+
+    @Data
+    static class CacheStatusResponse {
+        private final boolean hasCachedResults;
     }
 }

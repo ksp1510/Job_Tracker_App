@@ -96,7 +96,7 @@ export default function HomePage() {
             </main>
           </div>
         </div>
-        <div className="lg:flex lg:inset-y-0 lg:right-0 lg:w-1/2">
+        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
           <div className="h-56 w-full sm:h-72 md:h-96 lg:w-full lg:h-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center">
             <div className="text-white text-6xl font-bold opacity-20">📊</div>
           </div>

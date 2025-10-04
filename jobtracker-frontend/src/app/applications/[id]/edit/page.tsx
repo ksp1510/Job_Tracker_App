@@ -19,6 +19,7 @@ import {
   LinkIcon,
   UserIcon,
   CalendarIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 
 interface ApplicationForm {
@@ -158,7 +159,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <BuildingOfficeIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <BuildingOfficeIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Company Name*
                   </label>
                   <input
@@ -175,7 +176,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <BriefcaseIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <BriefcaseIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Job Title *
                   </label>
                   <input
@@ -194,7 +195,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <MapPinIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <MapPinIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Location
                   </label>
                   <input
@@ -208,7 +209,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <CurrencyDollarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CurrencyDollarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Salary
                   </label>
                   <input
@@ -223,6 +224,7 @@ export default function EditApplicationPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-900">
+                  <PencilSquareIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Application Status *
                 </label>
                 <select
@@ -241,7 +243,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Applied Date
                   </label>
                   <input
@@ -258,7 +260,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Interview Date
                   </label>
                   <input
@@ -274,7 +276,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <CalendarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <CalendarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Assessment Date
                   </label>
                   <input
@@ -290,7 +292,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <LinkIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <LinkIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Job Link
                   </label>
                   <input
@@ -304,7 +306,7 @@ export default function EditApplicationPage() {
               <div>
                 <div className="mt-1 relative">
                   <label className="block text-sm font-medium text-gray-900">
-                  <UserIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <UserIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                     Recruiter Contact
                   </label>
                   <input
@@ -319,7 +321,7 @@ export default function EditApplicationPage() {
             <div>
               <div className="mt-1 relative">
                 <label className="block text-sm font-medium text-gray-900">
-                  <UserIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                  <UserIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Referral
                 </label>
                 <input

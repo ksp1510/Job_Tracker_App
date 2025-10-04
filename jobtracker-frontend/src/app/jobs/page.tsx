@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/jobs/page.tsx
 'use client';
@@ -19,11 +20,13 @@ import {
   BriefcaseIcon,
   CurrencyDollarIcon,
   CalendarIcon,
+  XMarkIcon,
+  FunnelIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
-import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
+import { BookmarkIcon as BookmarkIconSolid, CheckCircleIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 
 const JOB_TYPES = [
@@ -41,10 +44,16 @@ export default function JobSearchPage() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [showFilters, setShowFilters] = useState(true);
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasCachedResults, setHasCachedResults] = useState(false);
+  const [usingCacheData, setUsingCacheData] = useState(false);
   const [searchParams, setSearchParams] = useState<JobSearchParams>({
     page: 0,
     size: ITEMS_PER_PAGE,
   });
+
+
 
   const { register, watch, setValue } = useForm<{
     query: string;
@@ -105,6 +114,23 @@ export default function JobSearchPage() {
     enabled: isAuthenticated,
   });
 
+  //External search mutation
+  const externalSearchMutation = useMutation({
+    mutationFn: async (params: JobSearchParams) => {
+      // Call your backend API that uses external job search
+      const response = await apiClient.searchJobs(params);
+      return response;
+    },
+    onSuccess: (data) => {
+      toast.success(`Found ${data.totalElements} jobs`);
+      setIsSearching(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Search failed');
+      setIsSearching(false);
+    },
+  });
+
   // Save job mutation
   const saveJobMutation = useMutation({
     mutationFn: ({ jobId, notes }: { jobId: string; notes?: string }) =>
@@ -130,6 +156,32 @@ export default function JobSearchPage() {
     },
   });
 
+  //Mark as applied mutation
+  const markAsAppliedMutation = useMutation({
+    mutationFn: async (job: JobListing) => {
+      //Create a new application directly with job details
+      return apiClient.createApplication({
+        companyName: job.company,
+        jobTitle: job.title,
+        jobLocation: job.location,
+        jobDescription: job.description,
+        jobLink: job.applyUrl || undefined,
+        status: 'APPLIED' as any,
+        salary: job.salary || job.salaryRange || undefined,
+        appliedDate: new Date().toISOString(),
+        notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`
+      });
+    },
+    onSuccess: (data, job) => {
+      queryClient.invalidateQueries({queryKey: ['applications'] });
+      setAppliedJobs(prev => new Set([...prev, job.id]));
+      toast.success('Job marked as applied');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to mark job as applied');
+    }
+  });
+
   const handleSaveJob = (job: JobListing) => {
     const savedJob = savedJobs.find((saved: SavedJob) => saved.jobListingId === job.id);
     if (savedJob) {
@@ -142,6 +194,40 @@ export default function JobSearchPage() {
   const isJobSaved = (jobId: string) => {
     return savedJobs.some((saved: SavedJob) => saved.jobListingId === jobId);
   };
+
+  //Check if job is already applied
+  const isJobApplied = (jobId: string) => {
+    return appliedJobs.has(jobId);
+  };
+
+  // Handle mark as applied
+  const handleMarkAsApplied = (job: JobListing) => {
+    if (window.confirm(`Mark "${job.title}" at ${job.company} as applied?`)) {
+      markAsAppliedMutation.mutate(job);
+    }
+  };
+
+  // Handle search button click
+  const handleSearch = () => {
+    setIsSearching(true);
+    
+    const skillsArray = watchedValues.skills
+      ? watchedValues.skills.split(',').map(s => s.trim()).filter(s => s)
+      : undefined;
+
+    const params: JobSearchParams = {
+      query: watchedValues.query?.trim() || undefined,
+      location: watchedValues.location?.trim() || undefined,
+      jobType: watchedValues.jobType || undefined,
+      minSalary: watchedValues.minSalary ? parseFloat(watchedValues.minSalary) : undefined,
+      maxSalary: watchedValues.maxSalary ? parseFloat(watchedValues.maxSalary) : undefined,
+      skills: skillsArray,
+      page: 0,
+      size: ITEMS_PER_PAGE,
+    };
+    externalSearchMutation.mutate(params);
+
+  }
 
   const handlePageChange = (newPage: number) => {
     setSearchParams(prev => ({ ...prev, page: newPage }));
@@ -225,10 +311,10 @@ export default function JobSearchPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-4">
               <div className="md:col-span-1">
                 <label htmlFor="query" className="block text-sm font-medium text-gray-900 mb-1">
+                  <MagnifyingGlassIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Job Title / Keywords
                 </label>
                 <div className="relative">
-                  <MagnifyingGlassIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
                   <input
                     {...register('query')}
                     type="text"
@@ -240,10 +326,10 @@ export default function JobSearchPage() {
 
               <div>
                 <label htmlFor="location" className="block text-sm font-medium text-gray-900 mb-1">
+                  <MapPinIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                   Location
                 </label>
                 <div className="relative">
-                  <MapPinIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
                   <input
                     {...register('location')}
                     type="text"
@@ -285,10 +371,11 @@ export default function JobSearchPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
                     <label htmlFor="minSalary" className="block text-sm font-medium text-gray-900 mb-1">
+                    <CurrencyDollarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                       Min Salary ($)
                     </label>
                     <div className="relative">
-                      <CurrencyDollarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+                      
                       <input
                         {...register('minSalary')}
                         type="number"
@@ -302,10 +389,10 @@ export default function JobSearchPage() {
 
                   <div>
                     <label htmlFor="maxSalary" className="block text-sm font-medium text-gray-900 mb-1">
+                    <CurrencyDollarIcon className="inline-flex left-3 top-3 h-4 w-4 mr-1 text-gray-700" />
                       Max Salary ($)
                     </label>
                     <div className="relative">
-                      <CurrencyDollarIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
                       <input
                         {...register('maxSalary')}
                         type="number"
@@ -329,17 +416,51 @@ export default function JobSearchPage() {
                     />
                   </div>
                 </div>
-
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={clearFilters}
-                    className="text-sm font-medium text-gray-600 hover:text-gray-500"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
               </div>
             )}
+              
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  {/* Search Button - Primary Action */}
+                  <button
+                    onClick={handleSearch}
+                    disabled={isSearching || externalSearchMutation.isPending}
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    {isSearching || externalSearchMutation.isPending ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                      <MagnifyingGlassIcon className="w-5 h-5 mr-2" />
+                      Search Jobs
+                      </>
+                    )}
+                  </button>
+
+                  {/* Clear Filters Button - Secondary Action */}
+                  <button
+                    onClick={clearFilters}
+                    disabled={isSearching || externalSearchMutation.isPending}
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border-2 border-gray-300 text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                    <XMarkIcon className="w-5 h-5 mr-2" />
+                    Clear All Filters
+                  </button>
+
+                  {/* Optional: Show active filters count */}
+                  {(watchedValues.query || watchedValues.location || watchedValues.jobType ||
+                    watchedValues.minSalary || watchedValues.maxSalary || watchedValues.skills) && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <FunnelIcon className="w-4 h-4 mr-1" />
+                      <span className="font-medium">Active filters</span>
+                    </div>
+                    )}
+                </div>
           </div>
         </div>
 
@@ -445,7 +566,7 @@ export default function JobSearchPage() {
                     <button
                       onClick={() => handleSaveJob(job)}
                       disabled={saveJobMutation.isPending || unsaveJobMutation.isPending}
-                      className="flex top-4 right-4 p-2 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                      className="absolute top-4 right-4 p-2 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
                       title={isJobSaved(job.id) ? 'Remove from saved' : 'Save job'}
                     >
                       {isJobSaved(job.id) ? (
@@ -530,25 +651,51 @@ export default function JobSearchPage() {
                         </div>
                       )}
 
-                      {/* Action Buttons */}
+                      {/* Action Buttons - External Link */}
                       <div className="flex gap-2">
                         {job.applyUrl && (
                           <a
                             href={job.applyUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                          >
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-1" />
+                            className="flex-1 inline-flex items-center justify-center px-3 py-2 border-2 border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                            <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-1.5" />
                             Apply
                           </a>
                         )}
-                        <Link
-                          href={`/applications/new?jobId=${job.id}`}
-                          className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+
+                        {/* Mark as Applied */}
+                        <button
+                          onClick={() => handleMarkAsApplied(job)}
+                          disabled={markAsAppliedMutation.isPending || isJobApplied(job.id)}
+                          className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm transition-all duration-200 ${
+                            isJobApplied(job.id)
+                              ? 'text-green-700 bg-green-100 cursor-not-allowed'
+                              : 'text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-md transform hover:-translate-y-0.5'
+                          } disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}
                         >
-                          Track
-                        </Link>
+                          {markAsAppliedMutation.isPending ? (
+                            <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Marking...
+                          </>
+                        ) : isJobApplied(job.id) ? (
+                          <>
+                            <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                            Marked as Applied
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                            Mark as Applied
+                          </>
+                        )}
+                      </button>
+
                       </div>
                     </div>
                   </div>

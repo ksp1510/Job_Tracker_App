@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/lib/api.ts
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
 import { 
   AuthResponse, 
@@ -97,12 +98,59 @@ class ApiClient {
     await this.client.delete(`/applications/${id}`);
   }
 
-  // Job search endpoints
+  // ============================================
+  // CACHE-AWARE JOB SEARCH ENDPOINTS
+  // ============================================
+
+  /**
+   * Check if user has valid cached search results
+   */
+  async checkCacheStatus(): Promise<boolean> {
+    try {
+      const response = await this.client.get('/jobs/cache/status');
+      return response.data.hasCachedResults;
+    } catch (error) {
+      console.error('Failed to check cache status:', error);
+      return false;
+    }
+  }
+
+
+  /**
+   * Get cached search results (for when user returns to application without triggering a new search)
+   * Returns cached data if available and valid (within 1 hour)
+   */
+  async getCachedResults(page = 0, size = 10): Promise<PaginatedResponse<JobListing> | null> {
+    try {
+      const response = await this.client.get('/jobs/cache', { params: { page, size } });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 204) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Search jobs with filters (triggers API calls and caches results)
+   * This will make calls to external APIs and cache the results for 1 hour
+   */
   async searchJobs(params: JobSearchParams): Promise<PaginatedResponse<JobListing>> {
     const response = await this.client.get('/jobs/search', { params });
     return response.data;
   }
 
+  /**
+   * Clear cached search results
+   */
+  async clearCache(): Promise<void> {
+    await this.client.delete('/jobs/cache');
+  }
+
+  /**
+   * Other Job endpoints
+   */
   async getJob(id: string): Promise<JobListing> {
     const response = await this.client.get(`/jobs/${id}`);
     return response.data;
@@ -120,6 +168,11 @@ class ApiClient {
 
   async unsaveJob(id: string): Promise<void> {
     await this.client.delete(`/jobs/saved/${id}`);
+  }
+
+  async getSearchHistory(): Promise<any[]> {
+    const response = await this.client.get('/jobs/search-history');
+    return response.data;
   }
 
   // Notification endpoints
