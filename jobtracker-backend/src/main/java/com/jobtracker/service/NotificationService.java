@@ -2,7 +2,9 @@ package com.jobtracker.service;
 
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Notification;
+import com.jobtracker.model.Status;
 import com.jobtracker.model.User;
+import com.jobtracker.repository.ApplicationRepository;
 import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -18,19 +20,22 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final ApplicationRepository applicationRepository;
     private final SesService sesService;
 
     public NotificationService(NotificationRepository notificationRepository, 
                              UserRepository userRepository,
+                             ApplicationRepository applicationRepository,
                              SesService sesService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
         this.sesService = sesService;
     }
 
     /**
-     * Automatically create follow-up reminder when application is created with APPLIED status
-     * This is triggered from ApplicationService when new application is saved
+     * Create follow-up reminder when application is created with APPLIED status
+     * Reminder will be sent 7 days later, ONLY if status is still APPLIED
      */
     public void createFollowUpReminder(Application app) {
         User user = getUserIfNotificationsEnabled(app.getUserId());
@@ -42,15 +47,15 @@ public class NotificationService {
         n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
         n.setNotifyAt(Instant.now().plus(7, ChronoUnit.DAYS)); // 7 days from now
         n.setType(Notification.NotificationType.FOLLOW_UP);
-        n.setChannel(Notification.Channel.IN_APP); // Follow-up is in-app only
+        n.setChannel(Notification.Channel.IN_APP);
         n.setSent(false);
 
         notificationRepository.save(n);
-        System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName());
+        System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName() + " (notify at: " + n.getNotifyAt() + ")");
     }
 
     /**
-     * Create interview reminder (user-initiated)
+     * Create interview reminder - 24 hours before interview
      */
     public Notification createInterviewReminder(String userId, String applicationId, 
                                               LocalDateTime interviewDate, String customMessage) {
@@ -62,20 +67,23 @@ public class NotificationService {
         Notification n = new Notification();
         n.setUserId(userId);
         n.setApplicationId(applicationId);
-        n.setMessage(customMessage != null ? customMessage : "Interview reminder - Don't forget your interview tomorrow!");
+        n.setMessage(customMessage != null ? customMessage : 
+            "Reminder: Your interview is tomorrow! Good luck!");
         
-        // Notify 1 day before interview
+        // Notify 24 hours (1 day) before interview
         n.setNotifyAt(interviewDate.minusDays(1).toInstant(ZoneOffset.UTC));
         n.setType(Notification.NotificationType.INTERVIEW);
         n.setChannel(user.isEmailNotificationsEnabled() ? 
                     Notification.Channel.EMAIL : Notification.Channel.IN_APP);
         n.setSent(false);
 
-        return notificationRepository.save(n);
+        Notification saved = notificationRepository.save(n);
+        System.out.println("✅ Interview reminder created (notify 24hrs before): " + saved.getNotifyAt());
+        return saved;
     }
 
     /**
-     * Create assessment deadline reminder (user-initiated)
+     * Create assessment deadline reminder - 24 hours before deadline
      */
     public Notification createAssessmentDeadlineReminder(String userId, String applicationId, 
                                                        LocalDateTime assessmentDeadline, String customMessage) {
@@ -87,20 +95,23 @@ public class NotificationService {
         Notification n = new Notification();
         n.setUserId(userId);
         n.setApplicationId(applicationId);
-        n.setMessage(customMessage != null ? customMessage : "Assessment deadline reminder - Complete your assessment soon!");
+        n.setMessage(customMessage != null ? customMessage : 
+            "Reminder: Your assessment deadline is tomorrow!");
         
-        // Notify 1 day before deadline
+        // Notify 24 hours (1 day) before deadline
         n.setNotifyAt(assessmentDeadline.minusDays(1).toInstant(ZoneOffset.UTC));
         n.setType(Notification.NotificationType.DEADLINE);
         n.setChannel(user.isEmailNotificationsEnabled() ? 
                     Notification.Channel.EMAIL : Notification.Channel.IN_APP);
         n.setSent(false);
 
-        return notificationRepository.save(n);
+        Notification saved = notificationRepository.save(n);
+        System.out.println("✅ Assessment reminder created (notify 24hrs before): " + saved.getNotifyAt());
+        return saved;
     }
 
     /**
-     * Generic notification creation (for manual notifications)
+     * Generic notification creation
      */
     public Notification createNotification(Notification n) {
         User user = getUserIfNotificationsEnabled(n.getUserId());
@@ -118,7 +129,7 @@ public class NotificationService {
     }
 
     /**
-     * Process due notifications (called by scheduled job)
+     * Process due notifications - CHECK STATUS BEFORE SENDING FOLLOW-UP
      */
     public void processDueNotifications() {
         List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(Instant.now());
@@ -128,10 +139,22 @@ public class NotificationService {
             try {
                 User user = userRepository.findById(n.getUserId()).orElse(null);
                 if (user == null || !user.isNotificationEnabled()) {
-                    // Mark as sent but skip processing
                     n.setSent(true);
                     notificationRepository.save(n);
                     continue;
+                }
+
+                // CRITICAL: Check if follow-up notification should still be sent
+                if (n.getType() == Notification.NotificationType.FOLLOW_UP) {
+                    Application app = applicationRepository.findById(n.getApplicationId()).orElse(null);
+                    
+                    // Only send follow-up if status is still APPLIED
+                    if (app == null || app.getStatus() != Status.APPLIED) {
+                        System.out.println("⏭️ Skipping follow-up: status changed from APPLIED");
+                        n.setSent(true); // Mark as sent to avoid resending
+                        notificationRepository.save(n);
+                        continue;
+                    }
                 }
 
                 // Send notification based on channel
@@ -152,7 +175,7 @@ public class NotificationService {
                 
             } catch (Exception e) {
                 System.err.println("❌ Failed to send notification: " + e.getMessage());
-                // Don't mark as sent so it can be retried
+                e.printStackTrace();
             }
         }
     }
@@ -169,11 +192,14 @@ public class NotificationService {
         user.setEmailNotificationsEnabled(emailEnabled);
         user.setInAppNotificationsEnabled(inAppEnabled);
         
-        return userRepository.save(user);
+        User updatedUser = userRepository.save(user);
+        System.out.println("✅ Notification preferences updated for user: " + user.getEmail());
+        
+        return updatedUser;
     }
 
     /**
-     * Delete notification (user action)
+     * Delete notification
      */
     public void deleteNotification(String userId, String notificationId) {
         Notification n = notificationRepository.findById(notificationId)
@@ -208,9 +234,9 @@ public class NotificationService {
             case FOLLOW_UP:
                 return "🔔 Follow-up Reminder - Job Application";
             case INTERVIEW:
-                return "📅 Interview Reminder";
+                return "📅 Interview Reminder - Tomorrow!";
             case DEADLINE:
-                return "⏰ Assessment Deadline Reminder";
+                return "⏰ Assessment Deadline - Tomorrow!";
             default:
                 return "🔔 Job Tracker Notification";
         }

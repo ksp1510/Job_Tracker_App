@@ -1,100 +1,69 @@
 package com.jobtracker.service;
 
 import com.jobtracker.model.Application;
-import com.jobtracker.model.Status;
+import lombok.RequiredArgsConstructor;
 import com.jobtracker.repository.ApplicationRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class ApplicationService {
 
-    private final ApplicationRepository repository;
-    private final NotificationService notificationService;
+    private final ApplicationRepository applicationRepository;
 
-    public ApplicationService(ApplicationRepository repository, NotificationService notificationService) {
-        this.repository = repository;
-        this.notificationService = notificationService;
+    public Application createApplication(Application application) {
+        application.setCreatedAt(LocalDateTime.now());
+        application.setUpdatedAt(LocalDateTime.now());
+        application.setLastStatusChangeDate(LocalDateTime.now());
+        return applicationRepository.save(application);
     }
 
-    public Application save(String userId, Application app) {
-        app.setUserId(userId);
-        app.setAppliedDate(LocalDate.now());
+    public Application updateApplication(String id, String userId, Application updatedApplication) {
+        Application existing = applicationRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
 
-        //Save the application first
-        Application savedApp = repository.save(app);
-
-        //Create follwoe-up reminder if status is APPLIED
-        if (app.getStatus() == Status.APPLIED) {
-            try {
-                notificationService.createFollowUpReminder(savedApp);
-            } catch (Exception e) {
-                System.err.println("⚠️ Failed to create follow-up reminder: " + e.getMessage());
-                // Don't fail the application creation if notification creation fails
-            }
+        // Track status changes
+        if (!existing.getStatus().equals(updatedApplication.getStatus())) {
+            updatedApplication.setLastStatusChangeDate(LocalDateTime.now());
         }
-        return savedApp;
+
+        updatedApplication.setId(existing.getId());
+        updatedApplication.setUserId(userId);
+        updatedApplication.setCreatedAt(existing.getCreatedAt());
+        updatedApplication.setUpdatedAt(LocalDateTime.now());
+        
+        return applicationRepository.save(updatedApplication);
     }
 
-    public List<Application> getAllByUser(String userId) {
-        return repository.findByUserId(userId);
+    public List<Application> getUserApplications(String userId) {
+        return applicationRepository.findByUserIdOrderByAppliedDateDesc(userId);
     }
 
-    public Application getById(String id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    public Optional<Application> getApplication(String id, String userId) {
+        return applicationRepository.findByIdAndUserId(id, userId);
     }
 
-    public Application findByIdAndUserId(String id, String userId) {
-        return repository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Application not found: " + id));
-    }
-
-    public List<Application> findByStatus(String status) {
-        return repository.findByStatus(status);
+    public void deleteApplication(String id, String userId) {
+        Application application = applicationRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        applicationRepository.delete(application);
     }
 
     public List<Application> findByUserIdAndStatus(String userId, String status) {
-        return repository.findByUserIdAndStatus(userId, status);
+        return applicationRepository.findByUserIdAndStatus(userId, status);
     }
 
-    public Application update(String id, Application appDetails) {
-        return repository.findById(id).map(app -> {
-            if (appDetails.getCompanyName() != null) app.setCompanyName(appDetails.getCompanyName());
-            if (appDetails.getJobTitle() != null) app.setJobTitle(appDetails.getJobTitle());
-            if (appDetails.getJobLocation() != null) app.setJobLocation(appDetails.getJobLocation());
-            if (appDetails.getJobDescription() != null) app.setJobDescription(appDetails.getJobDescription());
-            if (appDetails.getJobLink() != null) app.setJobLink(appDetails.getJobLink());
-            if (appDetails.getRecruiterContact() != null) app.setRecruiterContact(appDetails.getRecruiterContact());
-            if (appDetails.getStatus() != null) app.setStatus(appDetails.getStatus());
-            if (appDetails.getSalary() != null) app.setSalary(appDetails.getSalary());
-            if (appDetails.getNotes() != null) app.setNotes(appDetails.getNotes());
-            if (appDetails.getResumeId() != null) app.setResumeId(appDetails.getResumeId());
-            if (appDetails.getCoverLetterId() != null) app.setCoverLetterId(appDetails.getCoverLetterId());
-            if (appDetails.getAppliedDate() != null) app.setAppliedDate(appDetails.getAppliedDate());
-            if (appDetails.getLastFollowUpDate() != null) app.setLastFollowUpDate(appDetails.getLastFollowUpDate());
-            if (appDetails.getReferral() != null) app.setReferral(appDetails.getReferral());
-            if (appDetails.getInterviewDate() != null) app.setInterviewDate(appDetails.getInterviewDate());
-            if (appDetails.getAssessmentDate() != null) app.setAssessmentDate(appDetails.getAssessmentDate());
-            return repository.save(app);
-        }).orElseThrow(() -> new RuntimeException("Application not found: " + id));
+    // Check if user has already applied to this job
+    public boolean hasAppliedToJob(String userId, String externalJobId) {
+        return applicationRepository.findByUserIdAndExternalJobId(userId, externalJobId).isPresent();
     }
 
-    public void delete(String id) {
-        repository.deleteById(id);
+    public void fileDeleted(String applicationId, String type) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'fileDeleted'");
     }
-
-    public void fileDeleted(String applicationId, String fileType) {
-        repository.findById(applicationId).map(app -> {
-            if ("Resume".equalsIgnoreCase(fileType)) {
-                app.setResumeId(null);
-            } else if ("CoverLetter".equalsIgnoreCase(fileType)) {
-                app.setCoverLetterId(null);
-            }
-            return repository.save(app);
-        }).orElseThrow(() -> new RuntimeException("Application not found: " + applicationId));
-    }
-    
 }

@@ -12,6 +12,7 @@ export interface User {
 export interface Application {
     id: string;
     userId: string;
+    externalJobId: string;
     companyName: string;
     jobTitle: string;
     jobLocation?: string;

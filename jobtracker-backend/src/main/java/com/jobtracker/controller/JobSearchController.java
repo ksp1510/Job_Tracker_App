@@ -98,7 +98,7 @@ public class JobSearchController {
      * Save/bookmark a job
      */
     @PostMapping("/{id}/save")
-    public ResponseEntity<SavedJob> saveJob(
+    public ResponseEntity<Optional<SavedJob>> saveJob(
             @PathVariable String id,
             @RequestBody(required = false) SaveJobRequest request,
             @RequestHeader("Authorization") String authHeader) {
@@ -106,7 +106,7 @@ public class JobSearchController {
         String userId = extractUserId(authHeader);
         String notes = request != null ? request.getNotes() : null;
         
-        SavedJob savedJob = jobSearchService.saveJob(userId, id, notes);
+        Optional<SavedJob> savedJob = jobSearchService.saveJob(userId, id, notes);
         return ResponseEntity.ok(savedJob);
     }
 

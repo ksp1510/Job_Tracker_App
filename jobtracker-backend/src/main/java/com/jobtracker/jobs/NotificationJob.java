@@ -14,7 +14,7 @@ public class NotificationJob {
         this.notificationService = notificationService;
     }
 
-    @Scheduled(fixedRate = 60000) // Every 1 minute
+    /*@Scheduled(fixedRate = 60000) // Every 1 minute
     public void processNotifications() {
         try {
             System.out.println("🔄 Running notification job...");
@@ -23,5 +23,5 @@ public class NotificationJob {
             System.err.println("❌ Notification job failed: " + e.getMessage());
             e.printStackTrace();
         }
-    }
+    }*/
 }

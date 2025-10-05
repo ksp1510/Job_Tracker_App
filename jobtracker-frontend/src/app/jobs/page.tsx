@@ -11,7 +11,6 @@ import { apiClient } from '@/lib/api';
 import { JobListing, JobSearchParams, SavedJob } from '@/lib/types';
 import { useForm } from 'react-hook-form';
 import { debounce, formatSalary, timeAgo } from '@/lib/utils';
-import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon,
@@ -47,70 +46,10 @@ export default function JobSearchPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
-  const [hasCachedResults, setHasCachedResults] = useState(false);
-  const [usingCacheData, setUsingCacheData] = useState(false);
   const [searchParams, setSearchParams] = useState<JobSearchParams>({
     page: 0,
     size: ITEMS_PER_PAGE,
   });
-  
-  useEffect(() => {
-    initializeComponent();
-  }, []);
-
-  const initializeComponent = async () => {
-    const hasCached = await apiClient.checkCacheStatus();
-    setHasCachedResults(hasCached);
-    if (hasCached) {
-      await loadCachedResults();
-    }
-  };
-
-  /**
-   * Load cached results (on app return)
-   */
-  const loadCachedResults = async () => {
-    try {
-      const result = await apiClient.getCachedResults(
-        searchParams.page,
-        searchParams.size
-      );
-      if (!result) {
-        setHasCachedResults(false);
-        return;
-      }
-      // Seed react-query cache with cached results so the UI renders from cache
-      queryClient.setQueryData(['jobs', searchParams], result);
-      setUsingCacheData(true);
-      console.log('Using cached results');
-    } catch (error) {
-      console.error('Failed to load cached results:', error);
-      setHasCachedResults(false);
-    }
-  };
-
-  /**
-   * Clear cached results
-   */
-  const handleClearCache = async () => {
-    await apiClient.clearCache();
-    setHasCachedResults(false);
-    setUsingCacheData(false);
-    queryClient.invalidateQueries({ queryKey: ['jobs', searchParams] });
-    console.log('Cache cleared successfully');
-  };
-
-  /**
-   * Handle input changes
-   */
-  const handleInputChange = (e: { target: { name: any; value: any; }; }) => {
-    const { name, value } = e.target;
-    setSearchParams(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
 
   const { register, watch, setValue } = useForm<{
     query: string;
@@ -171,10 +110,31 @@ export default function JobSearchPage() {
     enabled: isAuthenticated,
   });
 
-  //External search mutation
+  // Fetch applications to check applied status
+  const { data: applications = [] } = useQuery({
+    queryKey: ['applications'],
+    queryFn: () => apiClient.getApplications(),
+    enabled: isAuthenticated,
+  });
+
+  // Check applied jobs from applications using external job ID
+  useEffect(() => {
+    if (applications && applications.length > 0) {
+      const appliedJobIds = new Set<string>();
+      applications.forEach((app: any) => {
+        if (app.externalJobId) {
+          appliedJobIds.add(app.externalJobId);
+        }
+      });
+      setAppliedJobs(appliedJobIds);
+      // Persist to localStorage
+      localStorage.setItem('appliedJobs', JSON.stringify([...appliedJobIds]));
+    }
+  }, [applications]);
+
+  // External search mutation
   const externalSearchMutation = useMutation({
     mutationFn: async (params: JobSearchParams) => {
-      // Call your backend API that uses external job search
       const response = await apiClient.searchJobs(params);
       return response;
     },
@@ -213,12 +173,11 @@ export default function JobSearchPage() {
     },
   });
 
-  //Mark as applied mutation
+  // Mark as applied mutation
   const markAsAppliedMutation = useMutation({
     mutationFn: async (job: JobListing) => {
       const uId = await apiClient.getCurrentUser();
-      console.log(uId.userId);
-      //Create a new application directly with job details
+      // Create a new application with external job ID
       return apiClient.createApplication({
         userId: uId.userId,
         companyName: job.company,
@@ -230,12 +189,17 @@ export default function JobSearchPage() {
         salary: job.salary || job.salaryRange || undefined,
         appliedDate: new Date().toISOString(),
         notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
+        externalJobId: job.id, // Store external job ID
         id: ''
       });
     },
     onSuccess: (data, job) => {
-      queryClient.invalidateQueries({queryKey: ['applications'] });
-      setAppliedJobs(prev => new Set([...prev, job.id]));
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      setAppliedJobs(prev => {
+        const newSet = new Set([...prev, job.id]);
+        localStorage.setItem('appliedJobs', JSON.stringify([...newSet]));
+        return newSet;
+      });
       toast.success('Job marked as applied');
     },
     onError: (error: any) => {
@@ -256,7 +220,7 @@ export default function JobSearchPage() {
     return savedJobs.some((saved: SavedJob) => saved.jobListingId === jobId);
   };
 
-  //Check if job is already applied
+  // Check if job is already applied using external job ID
   const isJobApplied = (jobId: string) => {
     return appliedJobs.has(jobId);
   };
@@ -287,8 +251,7 @@ export default function JobSearchPage() {
       size: ITEMS_PER_PAGE,
     };
     externalSearchMutation.mutate(params);
-
-  }
+  };
 
   const handlePageChange = (newPage: number) => {
     setSearchParams(prev => ({ ...prev, page: newPage }));
@@ -394,7 +357,7 @@ export default function JobSearchPage() {
                   <input
                     {...register('location')}
                     type="text"
-                    placeholder="e.g. San Francisco, CA"
+                    placeholder="e.g. San Francisco, CA or Ahmedabad, India"
                     className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
@@ -436,7 +399,6 @@ export default function JobSearchPage() {
                       Min Salary ($)
                     </label>
                     <div className="relative">
-                      
                       <input
                         {...register('minSalary')}
                         type="number"
@@ -480,48 +442,48 @@ export default function JobSearchPage() {
               </div>
             )}
               
-                <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                  {/* Search Button - Primary Action */}
-                  <button
-                    onClick={handleSearch}
-                    disabled={isSearching || externalSearchMutation.isPending}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  >
-                    {isSearching || externalSearchMutation.isPending ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                      <MagnifyingGlassIcon className="w-5 h-5 mr-2" />
-                      Search Jobs
-                      </>
-                    )}
-                  </button>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              {/* Search Button - Primary Action */}
+              <button
+                onClick={handleSearch}
+                disabled={isSearching || externalSearchMutation.isPending}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isSearching || externalSearchMutation.isPending ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <MagnifyingGlassIcon className="w-5 h-5 mr-2" />
+                    Search Jobs
+                  </>
+                )}
+              </button>
 
-                  {/* Clear Filters Button - Secondary Action */}
-                  <button
-                    onClick={clearFilters}
-                    disabled={isSearching || externalSearchMutation.isPending}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border-2 border-gray-300 text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                    <XMarkIcon className="w-5 h-5 mr-2" />
-                    Clear All Filters
-                  </button>
+              {/* Clear Filters Button - Secondary Action */}
+              <button
+                onClick={clearFilters}
+                disabled={isSearching || externalSearchMutation.isPending}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-6 py-3 border-2 border-gray-300 text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                <XMarkIcon className="w-5 h-5 mr-2" />
+                Clear All Filters
+              </button>
 
-                  {/* Optional: Show active filters count */}
-                  {(watchedValues.query || watchedValues.location || watchedValues.jobType ||
-                    watchedValues.minSalary || watchedValues.maxSalary || watchedValues.skills) && (
-                    <div className="flex items-center text-sm text-gray-500">
-                      <FunnelIcon className="w-4 h-4 mr-1" />
-                      <span className="font-medium">Active filters</span>
-                    </div>
-                    )}
+              {/* Optional: Show active filters count */}
+              {(watchedValues.query || watchedValues.location || watchedValues.jobType ||
+                watchedValues.minSalary || watchedValues.maxSalary || watchedValues.skills) && (
+                <div className="flex items-center text-sm text-gray-500">
+                  <FunnelIcon className="w-4 h-4 mr-1" />
+                  <span className="font-medium">Active filters</span>
                 </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -714,7 +676,6 @@ export default function JobSearchPage() {
 
                       {/* Action Buttons */}
                       <div className="mt-8 flex flex-wrap gap-3">
-                        
                         {job.applyUrl ? (
                           <a
                             href={job.applyUrl}
@@ -726,22 +687,25 @@ export default function JobSearchPage() {
                             Apply on Company Site
                           </a>
                         ) : (
-                          <><button
+                          <>
+                            <button
                               className="btn-disabled"
                               disabled
                               title="No direct application link available"
                             >
                               ❌ No Apply Link Available
-                            </button><a
+                            </button>
+                            <a
                               href={`https://www.google.com/search?q=${encodeURIComponent(job.company || '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
                               title="Search for this job on Google"
                             >
-                                🔍 Search Company
-                              </a></>
-                      )}
+                              🔍 Search Company
+                            </a>
+                          </>
+                        )}
 
                         {/* Mark as Applied */}
                         <button
@@ -755,25 +719,24 @@ export default function JobSearchPage() {
                         >
                           {markAsAppliedMutation.isPending ? (
                             <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Marking...
-                          </>
-                        ) : isJobApplied(job.id) ? (
-                          <>
-                            <CheckCircleIcon className="w-4 h-4 mr-1.5" />
-                            Marked as Applied
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircleIcon className="w-4 h-4 mr-1.5" />
-                            Mark as Applied
-                          </>
-                        )}
-                      </button>
-
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Marking...
+                            </>
+                          ) : isJobApplied(job.id) ? (
+                            <>
+                              <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                              Applied
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                              Mark as Applied
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -824,7 +787,7 @@ export default function JobSearchPage() {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium cursor-pointer ${
                         pageNum === currentPage
                           ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'

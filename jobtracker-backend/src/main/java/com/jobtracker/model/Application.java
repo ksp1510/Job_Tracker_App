@@ -2,6 +2,7 @@ package com.jobtracker.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -41,15 +42,20 @@ public class Application {
     @NotNull(message = "Status is required")
     private Status status;          // Applied, Interview, Offer, Rejected
     private LocalDate appliedDate;
-    private LocalDate lastFollowUpDate;
+    private LocalDateTime lastStatusChangeDate;
+
+    @Indexed
+    private String externalJobId;
 
     private LocalDateTime interviewDate;
-    private LocalDateTime assessmentDate;
+    private LocalDateTime assessmentDeadline;
     
     private String resumeId;        // reference to resume used
     private String coverLetterId;
     private String notes;
     private String referral;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     // Add constructor for easy testing
     public Application() {}
