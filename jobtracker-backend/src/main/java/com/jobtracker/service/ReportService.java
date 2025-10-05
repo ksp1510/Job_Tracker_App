@@ -33,7 +33,7 @@ public class ReportService {
     // Excel Export
     public ByteArrayInputStream generateExcel(String status) throws Exception {
         List<Application> applications = (status != null) ?
-                applicationRepository.findByStatus(status) :
+                applicationRepository.findByUserId(status) :
                 applicationRepository.findAll();
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -64,7 +64,7 @@ public class ReportService {
     // PDF Export
     public ByteArrayInputStream generatePdf(String status) {
     List<Application> applications = (status != null) ?
-            applicationRepository.findByStatus(status) :
+            applicationRepository.findByUserId(status) :
             applicationRepository.findAll();
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();

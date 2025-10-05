@@ -115,9 +115,9 @@ public class JobSearchService {
     /**
      * Save job for user
      */
-    public SavedJob saveJob(String userId, String jobListingId, String notes) {
+    public Optional<SavedJob> saveJob(String userId, String jobListingId, String notes) {
         // Check if already saved
-        if (savedJobRepository.existsByUserIdAndJobListingId(userId, jobListingId)) {
+        if (savedJobRepository.findByUserIdAndJobListingId(userId, jobListingId) != null) {
             throw new RuntimeException("Job already saved");
         }
         
@@ -126,14 +126,14 @@ public class JobSearchService {
         savedJob.setJobListingId(jobListingId);
         savedJob.setNotes(notes);
         
-        return savedJobRepository.save(savedJob);
+        return Optional.of(savedJobRepository.save(savedJob));
     }
 
     /**
      * Get user's saved jobs
      */
     public List<SavedJob> getSavedJobs(String userId) {
-        return savedJobRepository.findByUserIdOrderBySavedAtDesc(userId);
+        return savedJobRepository.findByUserId(userId);
     }
 
     /**

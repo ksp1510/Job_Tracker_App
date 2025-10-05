@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.time.Duration;
 import java.time.Instant;
 import com.jobtracker.config.JwtUtil;
@@ -48,14 +49,14 @@ public class FileController {
         @RequestHeader("Authorization") String authHeader,
         @RequestParam("file") MultipartFile file) throws IOException {
 
-            Application app = applicationService.getById(applicationId);
-            String userId = app.getUserId();
+            Optional<Application> app = applicationService.getApplication(applicationId, authHeader);
+            String userId = app.get().getUserId();
             User user = userRepository.findById(userId)
                         .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
             String firstName = user.getFirstName();
             String lastName = user.getLastName();
-            String jobTitle = app.getJobTitle();
-            String companyName = app.getCompanyName();
+            String jobTitle = app.get().getJobTitle();
+            String companyName = app.get().getCompanyName();
 
     String filename = FileNameUtil.generate(firstName, lastName, jobTitle, companyName, false);
     File temp = File.createTempFile("resume-", ".pdf");
@@ -76,8 +77,8 @@ public class FileController {
     meta.setNotes("Uploaded by " + firstName + " " + lastName);
     fileRepository.save(meta);
 
-    app.setResumeId(meta.getId());
-    applicationService.update(applicationId, app);
+    app.get().setResumeId(meta.getId());
+    applicationService.updateApplication(applicationId, userId, app.get());
 
     return ResponseEntity.ok("Uploaded Resume: " + filename + ".pdf");
 }
@@ -89,14 +90,15 @@ public class FileController {
             @RequestHeader("Authorization") String authHeader,
             @RequestParam("file") MultipartFile file) throws IOException {
 
-            Application app = applicationService.getById(applicationId);
-            String userId = app.getUserId();
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtil.getUserId(token);
+            Optional<Application> app = applicationService.getApplication(applicationId, userId);
             User user = userRepository.findById(userId)
                         .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
             String firstName = user.getFirstName();
             String lastName = user.getLastName();
-            String jobTitle = app.getJobTitle();
-            String companyName = app.getCompanyName();
+            String jobTitle = app.get().getJobTitle();
+            String companyName = app.get().getCompanyName();
 
         String filename = FileNameUtil.generate(firstName, lastName, jobTitle, companyName, false);
         File temp = File.createTempFile("coverletter-", ".pdf");
@@ -117,8 +119,8 @@ public class FileController {
         meta.setNotes("Uploaded by " + firstName + " " + lastName);
         fileRepository.save(meta);
 
-        app.setCoverLetterId(meta.getId());
-        applicationService.update(applicationId, app);
+        app.get().setCoverLetterId(meta.getId());
+        applicationService.updateApplication(applicationId, userId, app.get());
 
         return ResponseEntity.ok("Uploaded Cover Letter: " + filename + ".pdf");
     }

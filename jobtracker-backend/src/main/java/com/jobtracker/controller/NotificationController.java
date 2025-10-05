@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.time.Duration;
 
 @RestController
@@ -59,7 +60,7 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getUnreadNotifications(
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(repository.findByUserIdAndReadFalse(userId));
+        return ResponseEntity.ok(repository.findByUserIdAndReadFalseOrderByNotifyAtDesc(userId));
     }
 
     /**
@@ -88,7 +89,7 @@ public class NotificationController {
     public ResponseEntity<Void> deleteNotification(@PathVariable String id,
                                                   @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        service.deleteNotification(userId, id);
+        service.deleteNotification(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -100,23 +101,24 @@ public class NotificationController {
     @PostMapping("/interview-reminder")
     public ResponseEntity<Notification> createInterviewReminder(
             @Valid @RequestBody InterviewReminderRequest request,
+            @PathVariable String applicationId,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
         
         // Verify user owns the application
-        Application app = applicationService.findByIdAndUserId(request.getApplicationId(), userId);
+        Optional<Application> app = applicationService.getApplication(applicationId, userId);
         
         // Update application with interview date
-        app.setInterviewDate(request.getInterviewDate());
-        applicationService.update(app.getId(), app);
+        app.get().setInterviewDate(request.getInterviewDate());
+        applicationService.updateApplication(app.get().getId(), userId, app.get());
         
         // Create notification
-        Notification notification = service.createInterviewReminder(
+        Notification notification = service.createCustomNotification(
                 userId, 
                 request.getApplicationId(), 
-                request.getInterviewDate(), 
-                request.getCustomMessage()
+                request.getCustomMessage(), 
+                request.getInterviewDate()
         );
         
         return ResponseEntity.ok(notification);
@@ -128,23 +130,24 @@ public class NotificationController {
     @PostMapping("/deadline-reminder")
     public ResponseEntity<Notification> createDeadlineReminder(
             @Valid @RequestBody DeadlineReminderRequest request,
+            @PathVariable String applicationId,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
         
         // Verify user owns the application
-        Application app = applicationService.findByIdAndUserId(request.getApplicationId(), userId);
+        Optional<Application> app = applicationService.getApplication(applicationId, userId);
         
         // Update application with assessment deadline
-        app.setAssessmentDate(request.getAssessmentDeadline());
-        applicationService.update(app.getId(), app);
+        app.get().setAssessmentDeadline(request.getAssessmentDeadline());
+        applicationService.updateApplication(app.get().getId(), userId, app.get());
         
         // Create notification
-        Notification notification = service.createAssessmentDeadlineReminder(
+        Notification notification = service.createCustomNotification(
                 userId, 
                 request.getApplicationId(), 
-                request.getAssessmentDeadline(), 
-                request.getCustomMessage()
+                request.getCustomMessage(), 
+                request.getAssessmentDeadline()
         );
         
         return ResponseEntity.ok(notification);
@@ -152,7 +155,7 @@ public class NotificationController {
 
     /**
      * Create custom notification
-     */
+     
     @PostMapping("/custom")
     public ResponseEntity<Notification> createCustomNotification(
             @Valid @RequestBody CustomNotificationRequest request,
@@ -164,11 +167,11 @@ public class NotificationController {
         n.setUserId(userId);
         n.setApplicationId(request.getApplicationId());
         n.setMessage(request.getMessage());
-        n.setNotifyAt(request.getNotifyAt().toInstant(java.time.ZoneOffset.UTC));
+        n.setNotifyAt(request.getNotifyAt());
         n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.FOLLOW_UP);
         n.setChannel(request.getChannel() != null ? request.getChannel() : Notification.Channel.IN_APP);
         
-        return ResponseEntity.ok(service.createNotification(n));
+        return ResponseEntity.ok(service.createCustomNotification(n));
     }
 
     // ================ NOTIFICATION PREFERENCES ================
