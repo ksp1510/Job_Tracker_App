@@ -41,6 +41,7 @@ export enum ApplicationStatus {
 
 export interface JobListing {
     id: string;
+    userId: string | undefined;
     externalId: string;
     title: string;
     company: string;

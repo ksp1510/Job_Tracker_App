@@ -88,46 +88,12 @@ export default function JobDetailPage() {
     },
   });
 
-  // Quick apply mutation - creates application directly
-  const quickApplyMutation = useMutation({
-    mutationFn: async (data: QuickApplicationForm) => {
-      if (!job) throw new Error('Job data not available');
-      
-      // Create application with job details
-      return apiClient.createApplication({
-        companyName: job.company,
-        jobTitle: job.title,
-        jobLocation: job.location,
-        jobDescription: job.description,
-        jobLink: job.applyUrl || undefined,
-        status: 'APPLIED' as any,
-        salary: job.salary || job.salaryRange || undefined,
-        notes: data.coverLetter,
-        appliedDate: new Date().toISOString(),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications'] });
-      toast.success('Application submitted successfully!');
-      setShowApplyModal(false);
-      reset();
-      router.push('/applications');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to submit application');
-    },
-  });
-
   const handleSaveToggle = () => {
     if (isJobSaved) {
       unsaveJobMutation.mutate(savedJob.id);
     } else {
       saveJobMutation.mutate();
     }
-  };
-
-  const onQuickApply = (data: QuickApplicationForm) => {
-    quickApplyMutation.mutate(data);
   };
 
   const handleTrackApplication = () => {
@@ -297,7 +263,7 @@ export default function JobDetailPage() {
             {/* Action Buttons */}
             <div className="mt-8 flex flex-wrap gap-3">
               
-              {job.applyUrl && (
+              {job.applyUrl ? (
                 <a
                   href={job.applyUrl}
                   target="_blank"
@@ -307,7 +273,23 @@ export default function JobDetailPage() {
                   <ArrowTopRightOnSquareIcon className="-ml-1 mr-2 h-5 w-5" />
                   Apply on Company Site
                 </a>
-              )}
+              ) : (
+                <><button
+                    className="btn-disabled"
+                    disabled
+                    title="No direct application link available"
+                  >
+                    ❌ No Apply Link Available
+                  </button><a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(job.company || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                    title="Search for this job on Google"
+                  >
+                      🔍 Search Company
+                    </a></>
+            )}
               
               <button
                 onClick={handleTrackApplication}
@@ -354,12 +336,6 @@ export default function JobDetailPage() {
               <dt className="text-sm font-medium text-gray-500">Source</dt>
               <dd className="mt-1 text-sm text-gray-900">{job.source}</dd>
             </div>
-            {job.externalId && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Job ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 font-mono">{job.externalId}</dd>
-              </div>
-            )}
             <div>
               <dt className="text-sm font-medium text-gray-500">Posted Date</dt>
               <dd className="mt-1 text-sm text-gray-900">{formatDate(job.postedDate)}</dd>

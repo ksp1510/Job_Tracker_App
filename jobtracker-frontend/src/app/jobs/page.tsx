@@ -11,6 +11,7 @@ import { apiClient } from '@/lib/api';
 import { JobListing, JobSearchParams, SavedJob } from '@/lib/types';
 import { useForm } from 'react-hook-form';
 import { debounce, formatSalary, timeAgo } from '@/lib/utils';
+import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon,
@@ -52,7 +53,63 @@ export default function JobSearchPage() {
     page: 0,
     size: ITEMS_PER_PAGE,
   });
+  
+  useEffect(() => {
+    initializeComponent();
+  }, []);
 
+  const initializeComponent = async () => {
+    const hasCached = await apiClient.checkCacheStatus();
+    setHasCachedResults(hasCached);
+    if (hasCached) {
+      await loadCachedResults();
+    }
+  };
+
+  /**
+   * Load cached results (on app return)
+   */
+  const loadCachedResults = async () => {
+    try {
+      const result = await apiClient.getCachedResults(
+        searchParams.page,
+        searchParams.size
+      );
+      if (!result) {
+        setHasCachedResults(false);
+        return;
+      }
+      // Seed react-query cache with cached results so the UI renders from cache
+      queryClient.setQueryData(['jobs', searchParams], result);
+      setUsingCacheData(true);
+      console.log('Using cached results');
+    } catch (error) {
+      console.error('Failed to load cached results:', error);
+      setHasCachedResults(false);
+    }
+  };
+
+  /**
+   * Clear cached results
+   */
+  const handleClearCache = async () => {
+    await apiClient.clearCache();
+    setHasCachedResults(false);
+    setUsingCacheData(false);
+    queryClient.invalidateQueries({ queryKey: ['jobs', searchParams] });
+    console.log('Cache cleared successfully');
+  };
+
+  /**
+   * Handle input changes
+   */
+  const handleInputChange = (e: { target: { name: any; value: any; }; }) => {
+    const { name, value } = e.target;
+    setSearchParams(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
 
   const { register, watch, setValue } = useForm<{
@@ -159,8 +216,11 @@ export default function JobSearchPage() {
   //Mark as applied mutation
   const markAsAppliedMutation = useMutation({
     mutationFn: async (job: JobListing) => {
+      const uId = await apiClient.getCurrentUser();
+      console.log(uId.userId);
       //Create a new application directly with job details
       return apiClient.createApplication({
+        userId: uId.userId,
         companyName: job.company,
         jobTitle: job.title,
         jobLocation: job.location,
@@ -169,7 +229,8 @@ export default function JobSearchPage() {
         status: 'APPLIED' as any,
         salary: job.salary || job.salaryRange || undefined,
         appliedDate: new Date().toISOString(),
-        notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`
+        notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
+        id: ''
       });
     },
     onSuccess: (data, job) => {
@@ -651,19 +712,36 @@ export default function JobSearchPage() {
                         </div>
                       )}
 
-                      {/* Action Buttons - External Link */}
-                      <div className="flex gap-2">
-                        {job.applyUrl && (
+                      {/* Action Buttons */}
+                      <div className="mt-8 flex flex-wrap gap-3">
+                        
+                        {job.applyUrl ? (
                           <a
                             href={job.applyUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 inline-flex items-center justify-center px-3 py-2 border-2 border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-1.5" />
-                            Apply
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                          >
+                            <ArrowTopRightOnSquareIcon className="-ml-1 mr-2 h-5 w-5" />
+                            Apply on Company Site
                           </a>
-                        )}
+                        ) : (
+                          <><button
+                              className="btn-disabled"
+                              disabled
+                              title="No direct application link available"
+                            >
+                              ❌ No Apply Link Available
+                            </button><a
+                              href={`https://www.google.com/search?q=${encodeURIComponent(job.company || '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                              title="Search for this job on Google"
+                            >
+                                🔍 Search Company
+                              </a></>
+                      )}
 
                         {/* Mark as Applied */}
                         <button
