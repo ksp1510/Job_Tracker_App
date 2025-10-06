@@ -62,8 +62,21 @@ public class ApplicationService {
         return applicationRepository.findByUserIdAndExternalJobId(userId, externalJobId).isPresent();
     }
 
+    // FIXED: Proper implementation of fileDeleted
     public void fileDeleted(String applicationId, String type) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'fileDeleted'");
+        Optional<Application> appOpt = applicationRepository.findById(applicationId);
+        if (appOpt.isEmpty()) {
+            return;
+        }
+        
+        Application app = appOpt.get();
+        if ("Resume".equals(type)) {
+            app.setResumeId(null);
+        } else if ("CoverLetter".equals(type)) {
+            app.setCoverLetterId(null);
+        }
+        
+        app.setUpdatedAt(LocalDateTime.now());
+        applicationRepository.save(app);
     }
 }

@@ -14,7 +14,7 @@ import {
   ArrowRightOnRectangleIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { classNames } from '@/lib/utils';
@@ -31,14 +31,32 @@ export const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const pathname = usePathname();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get unread notifications count
   const { data: unreadNotifications = [] } = useQuery({
     queryKey: ['unread-notifications'],
     queryFn: () => apiClient.getUnreadNotifications(),
     enabled: isAuthenticated,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
+
+  // FIXED: Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileOpen]);
 
   if (!isAuthenticated) {
     return null;
@@ -77,7 +95,7 @@ export const Navbar = () => {
                     <item.icon className="w-4 h-4 mr-2" />
                     {item.name}
                     {unreadCount > 0 && (
-                      <span className="flex -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
@@ -87,20 +105,20 @@ export const Navbar = () => {
             </div>
           </div>
 
-          {/* Right section - User menu */}
-          <div className="hidden sm:ml-6 sm:absolute sm:items-center">
-            <div className="relative">
+          {/* FIXED: Right section - User menu with proper positioning */}
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="absolute items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
-                <span className="ml-2 text-gray-700">
+                <span className="ml-2 text-gray-700 font-medium">
                   {user?.firstName} {user?.lastName}
                 </span>
               </button>
 
-              {/* Profile dropdown */}
+              {/* Profile dropdown - FIXED positioning */}
               {isProfileOpen && (
                 <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
                   <div className="px-4 py-2 text-xs text-gray-500 border-b">
@@ -108,21 +126,25 @@ export const Navbar = () => {
                   </div>
                   <Link
                     href="/settings"
-                    className="absolute items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setIsProfileOpen(false)}
                   >
-                    <Cog6ToothIcon className="w-4 h-4 mr-2" />
-                    Settings
+                    <div className="flex items-center">
+                      <Cog6ToothIcon className="w-4 h-4 mr-2" />
+                      Settings
+                    </div>
                   </Link>
                   <button
                     onClick={() => {
                       setIsProfileOpen(false);
                       logout();
                     }}
-                    className="absolute items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
-                    Sign out
+                    <div className="flex items-center">
+                      <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+                      Sign out
+                    </div>
                   </button>
                 </div>
               )}

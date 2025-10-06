@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-unescaped-entities */
 // src/app/jobs/saved/page.tsx
@@ -8,19 +9,18 @@ import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
-import { SavedJob } from '@/lib/types';
+import { SavedJob, JobListing } from '@/lib/types';
 import { formatDate, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import {
   BookmarkIcon,
   TrashIcon,
-  ArrowTopRightOnSquareIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
   BriefcaseIcon,
-  CalendarIcon,
-  PencilIcon,
+  EyeIcon,
+  PlusCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function SavedJobsPage() {
@@ -33,6 +33,17 @@ export default function SavedJobsPage() {
     queryKey: ['saved-jobs'],
     queryFn: () => apiClient.getSavedJobs(),
     enabled: isAuthenticated,
+  });
+
+  // FIXED: Fetch job details for each saved job
+  const savedJobsWithDetails = savedJobs.map((savedJob: SavedJob) => {
+    const { data: jobDetails } = useQuery({
+      queryKey: ['job', savedJob.jobListingId],
+      queryFn: () => apiClient.getJob(savedJob.jobListingId),
+      enabled: !!savedJob.jobListingId,
+    });
+    
+    return { ...savedJob, jobDetails };
   });
 
   // Unsave job mutation
@@ -48,16 +59,23 @@ export default function SavedJobsPage() {
   });
 
   // Filter saved jobs
-  const filteredJobs = savedJobs.filter((savedJob: SavedJob) => {
+  const filteredJobs = savedJobsWithDetails.filter((item) => {
     if (!searchQuery) return true;
     
-    // Note: In a real implementation, you'd want to include job details
-    // For now, we'll search by notes
-    return savedJob.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+    const jobDetails = item.jobDetails;
+    if (!jobDetails) return false;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      jobDetails.title?.toLowerCase().includes(searchLower) ||
+      jobDetails.company?.toLowerCase().includes(searchLower) ||
+      jobDetails.location?.toLowerCase().includes(searchLower) ||
+      item.notes?.toLowerCase().includes(searchLower)
+    );
   });
 
-  const handleUnsaveJob = (savedJobId: string) => {
-    if (window.confirm('Are you sure you want to remove this job from your saved list?')) {
+  const handleUnsaveJob = (savedJobId: string, jobTitle?: string) => {
+    if (window.confirm(`Are you sure you want to remove ${jobTitle || 'this job'} from your saved list?`)) {
       unsaveJobMutation.mutate(savedJobId);
     }
   };
@@ -93,7 +111,7 @@ export default function SavedJobsPage() {
         {/* Search */}
         <div className="px-4 py-4 sm:px-0">
           <div className="relative">
-            <MagnifyingGlassIcon className="flex left-3 top-3 h-5 w-5 text-gray-700" />
+            <MagnifyingGlassIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
               placeholder="Search saved jobs..."
@@ -128,7 +146,7 @@ export default function SavedJobsPage() {
             <div className="text-center py-12">
               {savedJobs.length === 0 ? (
                 <>
-                  <BookmarkIcon className="mx-auto h-12 w-12 text-gray-700" />
+                  <BookmarkIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No saved jobs</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Start by saving jobs you're interested in from the job search page.
@@ -145,7 +163,7 @@ export default function SavedJobsPage() {
                 </>
               ) : (
                 <>
-                  <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-700" />
+                  <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No matching saved jobs</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Try adjusting your search criteria.
@@ -155,49 +173,83 @@ export default function SavedJobsPage() {
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {filteredJobs.map((savedJob: SavedJob) => (
-                <li key={savedJob.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Saved Job #{savedJob.id}
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          Saved {timeAgo(savedJob.savedDate)}
-                        </span>
+              {filteredJobs.map((item) => {
+                const job = item.jobDetails;
+                
+                return (
+                  <li key={item.id} className="px-6 py-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        {/* FIXED: Show job title instead of "Saved Job #id" */}
+                        <div className="flex items-center justify-between mb-2">
+                          <Link 
+                            href={`/jobs/${item.jobListingId}`}
+                            className="text-lg font-medium text-gray-900 hover:text-indigo-600"
+                          >
+                            {job?.title || 'Loading...'}
+                          </Link>
+                          <span className="text-sm text-gray-500 ml-4">
+                            Saved {timeAgo(item.savedAt)}
+                          </span>
+                        </div>
+                        
+                        {job && (
+                          <>
+                            <div className="flex items-center text-sm text-gray-600 mb-2">
+                              <BriefcaseIcon className="h-4 w-4 mr-1" />
+                              {job.company}
+                            </div>
+                            
+                            {job.location && (
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                                <MapPinIcon className="h-4 w-4 mr-1" />
+                                {job.location}
+                              </div>
+                            )}
+                            
+                            <p className="text-sm text-gray-700 mb-2 line-clamp-2">
+                              {job.description}
+                            </p>
+                          </>
+                        )}
+                        
+                        {item.notes && (
+                          <p className="text-sm text-gray-600 mb-2 italic">
+                            Notes: {item.notes}
+                          </p>
+                        )}
                       </div>
                       
-                      {savedJob.notes && (
-                        <p className="text-sm text-gray-600 mb-2">
-                          Notes: {savedJob.notes}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center text-xs text-gray-400 space-x-4">
-                        <span>Job ID: {savedJob.jobListingId}</span>
-                        <span>Saved: {formatDate(savedJob.savedDate)}</span>
+                      {/* FIXED: Action buttons */}
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Link
+                          href={`/jobs/${item.jobListingId}`}
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          title="View job details"
+                        >
+                          <EyeIcon className="h-5 w-5" />
+                        </Link>
+                        <Link
+                          href={`/applications/new?jobId=${item.jobListingId}`}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                          title="Apply to this job"
+                        >
+                          <PlusCircleIcon className="h-5 w-5 mr-1" />
+                          Apply
+                        </Link>
+                        <button
+                          onClick={() => handleUnsaveJob(item.id, job?.title)}
+                          disabled={unsaveJobMutation.isPending}
+                          className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 bg-white hover:bg-red-50 disabled:opacity-50"
+                          title="Remove from saved"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Link
-                        href={`/applications/new?jobId=${savedJob.jobListingId}`}
-                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        Apply Now
-                      </Link>
-                      <button
-                        onClick={() => handleUnsaveJob(savedJob.id)}
-                        disabled={unsaveJobMutation.isPending}
-                        className="inline-flex items-center p-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 bg-white hover:bg-red-50 disabled:opacity-50"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

@@ -1,15 +1,12 @@
 // Scheduled Job to refresh external job data
 package com.jobtracker.jobs;
 
-import com.jobtracker.service.ExternalJobApiService;
-import com.jobtracker.service.JobDataSeedService;
-import com.jobtracker.service.JobSearchService;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JobDataRefreshJob {
 
+    /*
     private final ExternalJobApiService externalJobApiService;
     private final JobSearchService jobSearchService;
     private final JobDataSeedService seedService;
@@ -22,7 +19,7 @@ public class JobDataRefreshJob {
         this.seedService = seedService;
     }
 
-    /**
+    
      * Refresh job data every 6 hours
      
     //@Scheduled(fixedRate = 21600000) // 6 hours

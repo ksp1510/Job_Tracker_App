@@ -9,10 +9,7 @@ import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -40,16 +37,20 @@ public class NotificationService {
     public void createFollowUpReminder(Application app) {
         User user = getUserIfNotificationsEnabled(app.getUserId());
         if (user == null) return;
-
+    
         Notification n = new Notification();
         n.setUserId(app.getUserId());
         n.setApplicationId(app.getId());
         n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
-        n.setNotifyAt(Instant.now().plus(7, ChronoUnit.DAYS)); // 7 days from now
+        
+        // FIXED: Convert Instant to LocalDateTime
+        LocalDateTime notifyTime = LocalDateTime.now().plusDays(7);
+        n.setNotifyAt(notifyTime);
+        
         n.setType(Notification.NotificationType.FOLLOW_UP);
         n.setChannel(Notification.Channel.IN_APP);
         n.setSent(false);
-
+    
         notificationRepository.save(n);
         System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName() + " (notify at: " + n.getNotifyAt() + ")");
     }
@@ -57,8 +58,8 @@ public class NotificationService {
     /**
      * Create interview reminder - 24 hours before interview
      */
-    public Notification createInterviewReminder(String userId, String applicationId, 
-                                              LocalDateTime interviewDate, String customMessage) {
+    public Notification createInterviewReminder(String userId, String applicationId,
+                                          LocalDateTime interviewDate, String customMessage) {
         User user = getUserIfNotificationsEnabled(userId);
         if (user == null) {
             throw new RuntimeException("Notifications are disabled for this user");
@@ -70,8 +71,8 @@ public class NotificationService {
         n.setMessage(customMessage != null ? customMessage : 
             "Reminder: Your interview is tomorrow! Good luck!");
         
-        // Notify 24 hours (1 day) before interview
-        n.setNotifyAt(interviewDate.minusDays(1).toInstant(ZoneOffset.UTC));
+        // FIXED: Use LocalDateTime directly, no conversion to Instant
+        n.setNotifyAt(interviewDate.minusDays(1));
         n.setType(Notification.NotificationType.INTERVIEW);
         n.setChannel(user.isEmailNotificationsEnabled() ? 
                     Notification.Channel.EMAIL : Notification.Channel.IN_APP);
@@ -85,8 +86,8 @@ public class NotificationService {
     /**
      * Create assessment deadline reminder - 24 hours before deadline
      */
-    public Notification createAssessmentDeadlineReminder(String userId, String applicationId, 
-                                                       LocalDateTime assessmentDeadline, String customMessage) {
+    public Notification createAssessmentDeadlineReminder(String userId, String applicationId,
+                                                    LocalDateTime assessmentDeadline, String customMessage) {
         User user = getUserIfNotificationsEnabled(userId);
         if (user == null) {
             throw new RuntimeException("Notifications are disabled for this user");
@@ -98,8 +99,8 @@ public class NotificationService {
         n.setMessage(customMessage != null ? customMessage : 
             "Reminder: Your assessment deadline is tomorrow!");
         
-        // Notify 24 hours (1 day) before deadline
-        n.setNotifyAt(assessmentDeadline.minusDays(1).toInstant(ZoneOffset.UTC));
+        // FIXED: Use LocalDateTime directly, no conversion to Instant
+        n.setNotifyAt(assessmentDeadline.minusDays(1));
         n.setType(Notification.NotificationType.DEADLINE);
         n.setChannel(user.isEmailNotificationsEnabled() ? 
                     Notification.Channel.EMAIL : Notification.Channel.IN_APP);
@@ -132,9 +133,10 @@ public class NotificationService {
      * Process due notifications - CHECK STATUS BEFORE SENDING FOLLOW-UP
      */
     public void processDueNotifications() {
-        List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(Instant.now());
+        // FIXED: Use LocalDateTime.now() instead of Instant.now()
+        List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(LocalDateTime.now());
         System.out.println("🔔 Processing " + due.size() + " due notifications...");
-
+    
         for (Notification n : due) {
             try {
                 User user = userRepository.findById(n.getUserId()).orElse(null);
@@ -143,7 +145,7 @@ public class NotificationService {
                     notificationRepository.save(n);
                     continue;
                 }
-
+    
                 // CRITICAL: Check if follow-up notification should still be sent
                 if (n.getType() == Notification.NotificationType.FOLLOW_UP) {
                     Application app = applicationRepository.findById(n.getApplicationId()).orElse(null);
@@ -156,7 +158,7 @@ public class NotificationService {
                         continue;
                     }
                 }
-
+    
                 // Send notification based on channel
                 if (n.getChannel() == Notification.Channel.EMAIL && user.isEmailNotificationsEnabled()) {
                     sendEmailNotification(user, n);
@@ -166,7 +168,7 @@ public class NotificationService {
                 if (user.isInAppNotificationsEnabled()) {
                     System.out.println("📱 In-app notification for " + user.getEmail() + ": " + n.getMessage());
                 }
-
+    
                 // Mark as sent
                 n.setSent(true);
                 notificationRepository.save(n);

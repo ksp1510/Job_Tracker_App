@@ -21,6 +21,7 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
+    // FIXED: Added notification preference fields to response
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser(
             @RequestHeader("Authorization") String authorization) {
@@ -34,7 +35,10 @@ public class UserController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
-                user.getRole()
+                user.getRole(),
+                user.isNotificationEnabled(),
+                user.isEmailNotificationsEnabled(),
+                user.isInAppNotificationsEnabled()
             )
         );
     }
@@ -47,6 +51,8 @@ public class UserController {
         private String lastName;
         private String email;
         private String role;
+        private boolean notificationEnabled;
+        private boolean emailNotificationsEnabled;
+        private boolean inAppNotificationsEnabled;
     }
 }
-
