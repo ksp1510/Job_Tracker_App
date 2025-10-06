@@ -1,4 +1,3 @@
-// Job Search Controller
 package com.jobtracker.controller;
 
 import com.jobtracker.config.JwtUtil;
@@ -6,6 +5,7 @@ import com.jobtracker.model.JobListing;
 import com.jobtracker.model.JobSearch;
 import com.jobtracker.model.SavedJob;
 import com.jobtracker.service.JobSearchService;
+import com.jobtracker.exception.ResourceNotFoundException;
 import lombok.Data;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -37,25 +37,37 @@ public class JobSearchController {
         return ResponseEntity.ok(new CacheStatusResponse(hasCached));
     }
 
-    /*
-     * Get cached search results (for when user returns to application without triggering a new search)
+    /**
+     * Get cached search results
      */
     @GetMapping("/cache")
-    public ResponseEntity<Page<JobListing>> getCachedSearch(
-            @RequestHeader(defaultValue = "0") int page,
-            @RequestHeader(defaultValue = "10") int size,
+    public ResponseEntity<PaginatedJobResponse> getCachedSearch(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
         Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size);
-        return cachedResults.map(ResponseEntity::ok)
-                            .orElse(ResponseEntity.noContent().build());
+        
+        if (cachedResults.isPresent()) {
+            Page<JobListing> jobs = cachedResults.get();
+            PaginatedJobResponse response = new PaginatedJobResponse(
+                jobs.getContent(),
+                jobs.getTotalElements(),
+                jobs.getTotalPages(),
+                jobs.getNumber(),
+                jobs.getSize()
+            );
+            return ResponseEntity.ok(response);
+        }
+        
+        return ResponseEntity.noContent().build();
     }
 
     /**
-     * Search jobs with filters (triggers API calls)
+     * Search jobs with filters - FIXED: Returns custom DTO instead of Spring Page
      */
     @GetMapping("/search")
-    public ResponseEntity<Page<JobListing>> searchJobs(
+    public ResponseEntity<PaginatedJobResponse> searchJobs(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String jobType,
@@ -70,7 +82,16 @@ public class JobSearchController {
         Page<JobListing> jobs = jobSearchService.searchJobs(
                 query, location, jobType, minSalary, maxSalary, skills, page, size, userId);
         
-        return ResponseEntity.ok(jobs);
+        // Convert Spring Page to custom DTO
+        PaginatedJobResponse response = new PaginatedJobResponse(
+            jobs.getContent(),
+            jobs.getTotalElements(),
+            jobs.getTotalPages(),
+            jobs.getNumber(),  // Spring uses 'number' for current page
+            jobs.getSize()
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -91,14 +112,14 @@ public class JobSearchController {
     public ResponseEntity<JobListing> getJob(@PathVariable String id) {
         return jobSearchService.getJobById(id)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
     }
 
     /**
-     * Save/bookmark a job
+     * Save/bookmark a job - FIXED: Removed userId from body, returns SavedJob instead of Optional
      */
     @PostMapping("/{id}/save")
-    public ResponseEntity<Optional<SavedJob>> saveJob(
+    public ResponseEntity<SavedJob> saveJob(
             @PathVariable String id,
             @RequestBody(required = false) SaveJobRequest request,
             @RequestHeader("Authorization") String authHeader) {
@@ -106,7 +127,9 @@ public class JobSearchController {
         String userId = extractUserId(authHeader);
         String notes = request != null ? request.getNotes() : null;
         
-        Optional<SavedJob> savedJob = jobSearchService.saveJob(userId, id, notes);
+        SavedJob savedJob = jobSearchService.saveJob(userId, id, notes)
+            .orElseThrow(() -> new RuntimeException("Failed to save job"));
+        
         return ResponseEntity.ok(savedJob);
     }
 
@@ -151,7 +174,7 @@ public class JobSearchController {
         return jwtUtil.getUserId(token);
     }
 
-    // DTO
+    // DTOs
     @Data
     static class SaveJobRequest {
         private String notes;
@@ -160,5 +183,15 @@ public class JobSearchController {
     @Data
     static class CacheStatusResponse {
         private final boolean hasCachedResults;
+    }
+
+    // FIXED: Custom pagination response DTO to match frontend expectations
+    @Data
+    static class PaginatedJobResponse {
+        private final List<JobListing> content;
+        private final long totalElements;
+        private final int totalPages;
+        private final int page;  // Current page number
+        private final int size;
     }
 }

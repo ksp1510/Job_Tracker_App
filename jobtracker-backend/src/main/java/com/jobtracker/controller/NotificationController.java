@@ -7,6 +7,7 @@ import com.jobtracker.model.User;
 import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.service.NotificationService;
+import com.jobtracker.exception.ResourceNotFoundException;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
@@ -19,7 +20,6 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.time.Duration;
 
 @RestController
@@ -71,7 +71,7 @@ public class NotificationController {
                                                  @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
         Notification n = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         
         // Security check
         if (!n.getUserId().equals(userId)) {
@@ -89,73 +89,81 @@ public class NotificationController {
     public ResponseEntity<Void> deleteNotification(@PathVariable String id,
                                                   @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        service.deleteNotification(id);
+        Notification n = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+        
+        // Security check
+        if (!n.getUserId().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        repository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
-    // ================ NOTIFICATION CREATION ================
+    // ================ NOTIFICATION CREATION - FIXED ================
 
     /**
-     * Create interview reminder for specific application
+     * Create interview reminder for specific application - FIXED
      */
     @PostMapping("/interview-reminder")
     public ResponseEntity<Notification> createInterviewReminder(
             @Valid @RequestBody InterviewReminderRequest request,
-            @PathVariable String applicationId,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
         
         // Verify user owns the application
-        Optional<Application> app = applicationService.getApplication(applicationId, userId);
+        Application app = applicationService.getApplication(request.getApplicationId(), userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
         
         // Update application with interview date
-        app.get().setInterviewDate(request.getInterviewDate());
-        applicationService.updateApplication(app.get().getId(), userId, app.get());
+        app.setInterviewDate(request.getInterviewDate());
+        applicationService.updateApplication(app.getId(), userId, app);
         
         // Create notification
-        Notification notification = service.createCustomNotification(
+        Notification notification = service.createInterviewReminder(
                 userId, 
                 request.getApplicationId(), 
-                request.getCustomMessage(), 
-                request.getInterviewDate()
+                request.getInterviewDate(),
+                request.getCustomMessage()
         );
         
         return ResponseEntity.ok(notification);
     }
 
     /**
-     * Create assessment deadline reminder for specific application
+     * Create assessment deadline reminder for specific application - FIXED
      */
     @PostMapping("/deadline-reminder")
     public ResponseEntity<Notification> createDeadlineReminder(
             @Valid @RequestBody DeadlineReminderRequest request,
-            @PathVariable String applicationId,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
         
         // Verify user owns the application
-        Optional<Application> app = applicationService.getApplication(applicationId, userId);
+        Application app = applicationService.getApplication(request.getApplicationId(), userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
         
         // Update application with assessment deadline
-        app.get().setAssessmentDeadline(request.getAssessmentDeadline());
-        applicationService.updateApplication(app.get().getId(), userId, app.get());
+        app.setAssessmentDeadline(request.getAssessmentDeadline());
+        applicationService.updateApplication(app.getId(), userId, app);
         
         // Create notification
-        Notification notification = service.createCustomNotification(
+        Notification notification = service.createAssessmentDeadlineReminder(
                 userId, 
                 request.getApplicationId(), 
-                request.getCustomMessage(), 
-                request.getAssessmentDeadline()
+                request.getAssessmentDeadline(),
+                request.getCustomMessage()
         );
         
         return ResponseEntity.ok(notification);
     }
 
     /**
-     * Create custom notification
-     
+     * Create custom notification - FIXED and UNCOMMENTED
+     */
     @PostMapping("/custom")
     public ResponseEntity<Notification> createCustomNotification(
             @Valid @RequestBody CustomNotificationRequest request,
@@ -168,10 +176,12 @@ public class NotificationController {
         n.setApplicationId(request.getApplicationId());
         n.setMessage(request.getMessage());
         n.setNotifyAt(request.getNotifyAt());
-        n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.FOLLOW_UP);
+        n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.CUSTOM);
         n.setChannel(request.getChannel() != null ? request.getChannel() : Notification.Channel.IN_APP);
+        n.setCreatedAt(LocalDateTime.now());
         
-        return ResponseEntity.ok(service.createCustomNotification(n));
+        Notification saved = repository.save(n);
+        return ResponseEntity.ok(saved);
     }
 
     // ================ NOTIFICATION PREFERENCES ================

@@ -1,3 +1,5 @@
+// src/lib/types.ts
+
 export interface User {
     userId: string;
     firstName: string;
@@ -9,6 +11,7 @@ export interface User {
     inAppNotificationsEnabled: boolean;
 }
 
+// FIXED: Added missing fields
 export interface Application {
     id: string;
     userId: string;
@@ -25,7 +28,9 @@ export interface Application {
     resumeId?: string;
     coverLetterId?: string;
     appliedDate?: string;
-    lastFollowUpDate?: string;
+    lastStatusChangeDate?: string;  // ADDED
+    createdAt?: string;              // ADDED
+    updatedAt?: string;              // ADDED
     referral?: string;
     interviewDate?: string;
     assessmentDate?: string;
@@ -64,8 +69,10 @@ export interface SavedJob {
     id: string;
     userId: string;
     jobListingId: string;
-    savedDate: string;
+    savedAt: string;
     notes?: string;
+    applied?: boolean;           // ADDED
+    applicationId?: string;      // ADDED
 }
 
 export interface Notification {
@@ -81,11 +88,13 @@ export interface Notification {
     createdAt: string;
 }
 
+// FIXED: Match backend enum exactly
 export enum NotificationType {
     FOLLOW_UP = 'FOLLOW_UP',
     INTERVIEW = 'INTERVIEW',
     DEADLINE = 'DEADLINE',
-    ASSESSMENT = 'ASSESSMENT'
+    CUSTOM = 'CUSTOM',              // ADDED
+    STATUS_CHANGE = 'STATUS_CHANGE' // ADDED
 }
 
 export enum NotificationChannel {
@@ -118,11 +127,13 @@ export interface ApiResponse<T> {
     message?: string;
 }
 
+// FIXED: Added 'page' as alias for 'number' to handle Spring Page response
 export interface PaginatedResponse<T> {
     content: T[];
     totalElements: number;
     totalPages: number;
-    page: number;
+    page: number;      // Current page
+    number?: number;   // Spring Page uses 'number' 
     size: number;
 }
 

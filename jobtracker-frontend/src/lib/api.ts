@@ -26,7 +26,7 @@ class ApiClient {
 
     console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
 
-    // Request interceptor to add auth token
+    // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
         const token = Cookies.get('token');
@@ -38,12 +38,11 @@ class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor for error handling
+    // Response interceptor
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Clear token and redirect to login
           Cookies.remove('token');
           window.location.href = '/auth/login';
         }
@@ -84,7 +83,7 @@ class ApiClient {
     return response.data;
   }
 
-  async createApplication(data: Application): Promise<Application> {
+  async createApplication(data: Omit<Application, 'id'>): Promise<Application> {
     const response = await this.client.post('/applications', data);
     return response.data;
   }
@@ -99,11 +98,11 @@ class ApiClient {
   }
 
   // ============================================
-  // CACHE-AWARE JOB SEARCH ENDPOINTS
+  // JOB SEARCH ENDPOINTS - FIXED
   // ============================================
 
   /**
-   * Check if user has valid cached search results
+   * Check cache status
    */
   async checkCacheStatus(): Promise<boolean> {
     try {
@@ -115,15 +114,13 @@ class ApiClient {
     }
   }
 
-
   /**
-   * Get cached search results (for when user returns to application without triggering a new search)
-   * Returns cached data if available and valid (within 1 hour)
+   * Get cached results - FIXED: Handle 204 No Content response
    */
   async getCachedResults(page = 0, size = 10): Promise<PaginatedResponse<JobListing> | null> {
     try {
       const response = await this.client.get('/jobs/cache', { params: { page, size } });
-      return response.data;
+      return this.normalizePaginationResponse(response.data);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 204) {
         return null;
@@ -133,44 +130,67 @@ class ApiClient {
   }
 
   /**
-   * Search jobs with filters (triggers API calls and caches results)
-   * This will make calls to external APIs and cache the results for 1 hour
+   * Search jobs - FIXED: Normalize pagination response
    */
   async searchJobs(params: JobSearchParams): Promise<PaginatedResponse<JobListing>> {
     const response = await this.client.get('/jobs/search', { params });
-    return response.data;
+    return this.normalizePaginationResponse(response.data);
   }
 
   /**
-   * Clear cached search results
+   * FIXED: Helper to normalize Spring Page response to our interface
+   */
+  private normalizePaginationResponse(data: any): PaginatedResponse<JobListing> {
+    return {
+      content: data.content || [],
+      totalElements: data.totalElements || 0,
+      totalPages: data.totalPages || 0,
+      page: data.page !== undefined ? data.page : (data.number || 0),
+      size: data.size || 10,
+    };
+  }
+
+  /**
+   * Clear cache
    */
   async clearCache(): Promise<void> {
     await this.client.delete('/jobs/cache');
   }
 
   /**
-   * Other Job endpoints
+   * Get job by ID
    */
   async getJob(id: string): Promise<JobListing> {
     const response = await this.client.get(`/jobs/${id}`);
     return response.data;
   }
 
+  /**
+   * Save job - FIXED: Removed userId from request body
+   */
   async saveJob(id: string, notes?: string): Promise<SavedJob> {
-    const userId = Cookies.get('userId');
-    const response = await this.client.post(`/jobs/${id}/save`, { notes, userId });
+    const response = await this.client.post(`/jobs/${id}/save`, { notes });
     return response.data;
   }
 
+  /**
+   * Get saved jobs
+   */
   async getSavedJobs(): Promise<SavedJob[]> {
     const response = await this.client.get('/jobs/saved');
     return response.data;
   }
 
+  /**
+   * Unsave job
+   */
   async unsaveJob(id: string): Promise<void> {
     await this.client.delete(`/jobs/saved/${id}`);
   }
 
+  /**
+   * Get search history
+   */
   async getSearchHistory(): Promise<any[]> {
     const response = await this.client.get('/jobs/search-history');
     return response.data;
@@ -196,6 +216,9 @@ class ApiClient {
     await this.client.delete(`/notifications/${id}`);
   }
 
+  /**
+   * Create interview reminder - FIXED
+   */
   async createInterviewReminder(data: {
     applicationId: string;
     interviewDate: string;
@@ -205,6 +228,9 @@ class ApiClient {
     return response.data;
   }
 
+  /**
+   * Create deadline reminder - FIXED
+   */
   async createDeadlineReminder(data: {
     applicationId: string;
     assessmentDeadline: string;
@@ -214,6 +240,9 @@ class ApiClient {
     return response.data;
   }
 
+  /**
+   * Create custom notification - FIXED
+   */
   async createCustomNotification(data: {
     applicationId?: string;
     message: string;

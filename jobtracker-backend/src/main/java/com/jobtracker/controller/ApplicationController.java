@@ -4,6 +4,7 @@ import com.jobtracker.model.Application;
 import com.jobtracker.model.Files;
 import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
+import com.jobtracker.exception.ResourceNotFoundException;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/applications")
@@ -35,12 +35,13 @@ public class ApplicationController {
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
+        application.setUserId(userId);
         return ResponseEntity.ok(service.createApplication(application));
     }
 
     // 🔹 Get all applications for logged in user
     @GetMapping
-    public ResponseEntity<Object> getAll(
+    public ResponseEntity<List<Application>> getAll(
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
@@ -49,7 +50,7 @@ public class ApplicationController {
 
     // 🔹 Get all applications by status for logged in user
     @GetMapping("/by-status")
-    public ResponseEntity<Object> getAllByStatus(
+    public ResponseEntity<List<Application>> getAllByStatus(
         @RequestParam String status,
         @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
@@ -57,17 +58,18 @@ public class ApplicationController {
         return ResponseEntity.ok(service.findByUserIdAndStatus(userId, status));
     }
 
-    // 🔹 Get application by ID
+    // 🔹 Get application by ID - FIXED: Returns Application instead of Optional<Application>
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<Application>> getById(@PathVariable String id,
+    public ResponseEntity<Application> getById(@PathVariable String id,
                                             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
 
-        return ResponseEntity.ok(service.getApplication(id, userId));
+        Application app = service.getApplication(id, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        
+        return ResponseEntity.ok(app);
     }
-
-
 
     // 🔹 Update application
     @PutMapping("/{id}")
@@ -81,8 +83,7 @@ public class ApplicationController {
 
     // 🔹 Delete application
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@Valid 
-            @PathVariable String id,
+    public ResponseEntity<Void> delete(@PathVariable String id,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
@@ -90,26 +91,25 @@ public class ApplicationController {
         return ResponseEntity.noContent().build();
     }
 
+    // 🔹 Get application with files - FIXED: Proper constructor implementation
     @GetMapping("/{id}/with-files")
-    public ResponseEntity<ApplicationResponse> getApplicationWithFiles(@Valid 
+    public ResponseEntity<ApplicationResponse> getApplicationWithFiles(
             @PathVariable String id,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
-        Optional<Application> app = service.getApplication(id, userId);
-
+        
+        Application app = service.getApplication(id, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+        
         List<Files> files = fileRepository.findByApplicationId(id);
 
         return ResponseEntity.ok(new ApplicationResponse(app, files));
     }
 
-
     @Data
     @AllArgsConstructor
     static class ApplicationResponse {
-        public ApplicationResponse(Optional<Application> app, List<Files> files2) {
-            //TODO Auto-generated constructor stub
-        }
         private Application application;
         private List<Files> files;
     }

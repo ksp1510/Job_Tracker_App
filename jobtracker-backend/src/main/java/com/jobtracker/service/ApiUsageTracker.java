@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 public class ApiUsageTracker {
     
     private final MeterRegistry meterRegistry;
+    @SuppressWarnings("unused")
     private final Counter serpApiCalls;
+    @SuppressWarnings("unused")
     private final Counter rapidApiCalls;
     
     public ApiUsageTracker(MeterRegistry meterRegistry) {
