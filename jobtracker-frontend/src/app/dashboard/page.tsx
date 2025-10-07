@@ -1,13 +1,14 @@
 /* eslint-disable react/no-unescaped-entities */
-// src/app/dashboard/page.tsx
+// src/app/dashboard/page.tsx - Enhanced with Interview Modal
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { Application, ApplicationStatus } from '@/lib/types';
-import { formatDate, getStatusColor } from '@/lib/utils';
+import { formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
 import Link from 'next/link';
 import {
   PlusIcon,
@@ -17,10 +18,150 @@ import {
   CalendarIcon,
   ClockIcon,
   ArrowTrendingUpIcon,
+  XMarkIcon,
+  BuildingOfficeIcon,
+  MapPinIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
+
+// Interview Detail Modal Component
+const InterviewDetailModal = ({ 
+  application, 
+  onClose 
+}: { 
+  application: Application; 
+  onClose: () => void;
+}) => {
+  const isInterview = application.interviewDate != null;
+  const isAssessment = application.assessmentDeadline != null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div className="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 pb-4 border-b">
+          <h3 className="text-xl font-semibold text-gray-900">
+            {isInterview ? '📅 Interview Details' : '📝 Assessment Details'}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-4">
+          {/* Company & Position */}
+          <div className="bg-indigo-50 rounded-lg p-4 space-y-2">
+            <div className="flex items-center space-x-2">
+              <BriefcaseIcon className="h-5 w-5 text-indigo-600" />
+              <span className="font-semibold text-gray-900 text-lg">
+                {application.jobTitle}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <BuildingOfficeIcon className="h-5 w-5 text-indigo-600" />
+              <span className="text-gray-700">
+                {application.companyName}
+              </span>
+            </div>
+            {application.jobLocation && (
+              <div className="flex items-center space-x-2">
+                <MapPinIcon className="h-5 w-5 text-indigo-600" />
+                <span className="text-gray-600">
+                  {application.jobLocation}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Date & Time */}
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <CalendarIcon className="h-5 w-5 text-yellow-600" />
+              <span className="font-medium text-gray-900">
+                {isInterview ? 'Interview Scheduled' : 'Assessment Deadline'}
+              </span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900 ml-7">
+              {isInterview && application.interviewDate && formatDateTime(application.interviewDate)}
+              {isAssessment && application.assessmentDeadline && formatDateTime(application.assessmentDeadline)}
+            </p>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Application Status
+            </label>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(application.status)}`}>
+              {application.status}
+            </span>
+          </div>
+
+          {/* Additional Info */}
+          {application.recruiterContact && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Recruiter Contact
+              </label>
+              <p className="text-gray-900">{application.recruiterContact}</p>
+            </div>
+          )}
+
+          {application.notes && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+              </label>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-900 whitespace-pre-wrap">{application.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {application.jobLink && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Posting
+              </label>
+              <a
+                href={application.jobLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 hover:text-indigo-500 underline"
+              >
+                View Original Posting →
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-6 flex justify-end space-x-3 pt-4 border-t">
+          <Link
+            href={`/applications/${application.id}/edit`}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Edit Application
+          </Link>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
+  const [selectedInterview, setSelectedInterview] = useState<Application | null>(null);
 
   // Fetch recent applications
   const { data: applications = [], isLoading } = useQuery({
@@ -53,10 +194,17 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(b.appliedDate || '').getTime() - new Date(a.appliedDate || '').getTime())
     .slice(0, 5);
 
-  // Upcoming interviews
-  const upcomingInterviews = applications
-    .filter(app => app.interviewDate && new Date(app.interviewDate) > new Date())
-    .sort((a, b) => new Date(a.interviewDate!).getTime() - new Date(b.interviewDate!).getTime())
+  // Upcoming interviews and assessments - FIXED: Include both
+  const upcomingEvents = applications
+    .filter(app => 
+      (app.interviewDate && new Date(app.interviewDate) > new Date()) ||
+      (app.assessmentDeadline && new Date(app.assessmentDeadline) > new Date())
+    )
+    .sort((a, b) => {
+      const dateA = a.interviewDate ? new Date(a.interviewDate) : new Date(a.assessmentDeadline!);
+      const dateB = b.interviewDate ? new Date(b.interviewDate) : new Date(b.assessmentDeadline!);
+      return dateA.getTime() - dateB.getTime();
+    })
     .slice(0, 3);
 
   return (
@@ -76,7 +224,7 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Link
+          <Link
             href="/jobs"
             className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg shadow hover:shadow-md transition-shadow"
           >
@@ -319,12 +467,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Upcoming Interviews */}
+          {/* Upcoming Interviews & Assessments - ENHANCED: Clickable */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Upcoming Interviews
+                  Upcoming Events
                 </h3>
                 <Link
                   href="/notifications"
@@ -334,41 +482,56 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {upcomingInterviews.length === 0 ? (
+              {upcomingEvents.length === 0 ? (
                 <div className="text-center py-6">
                   <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No upcoming interviews</h3>
-                  <p className="mt-1 text-sm text-gray-500">Your interview schedule will appear here.</p>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No upcoming events</h3>
+                  <p className="mt-1 text-sm text-gray-500">Your interview and assessment schedule will appear here.</p>
                 </div>
               ) : (
                 <div className="flow-root">
                   <ul className="-my-5 divide-y divide-gray-200">
-                    {upcomingInterviews.map((application) => (
-                      <li key={application.id} className="py-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex-shrink-0">
-                            <CalendarIcon className="h-6 w-6 text-blue-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {application.jobTitle}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate">
-                              {application.companyName}
-                            </p>
-                            {application.interviewDate && (
-                              <p className="text-xs text-gray-400">
-                                {formatDate(application.interviewDate)} at{' '}
-                                {new Date(application.interviewDate).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                    {upcomingEvents.map((application) => {
+                      const isInterview = application.interviewDate != null;
+                      const eventDate = isInterview ? application.interviewDate : application.assessmentDeadline;
+                      
+                      return (
+                        <li 
+                          key={application.id} 
+                          className="py-4 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors"
+                          onClick={() => setSelectedInterview(application)}
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-shrink-0">
+                              <CalendarIcon className={`h-6 w-6 ${isInterview ? 'text-blue-500' : 'text-orange-500'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {application.jobTitle}
                               </p>
-                            )}
+                              <p className="text-sm text-gray-500 truncate">
+                                {application.companyName}
+                              </p>
+                              {eventDate && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {isInterview ? '📅 Interview: ' : '📝 Assessment: '}
+                                  {formatDate(eventDate)} at{' '}
+                                  {new Date(eventDate).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-400">
+                                Click for details →
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -416,8 +579,15 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Interview Detail Modal */}
+        {selectedInterview && (
+          <InterviewDetailModal
+            application={selectedInterview}
+            onClose={() => setSelectedInterview(null)}
+          />
+        )}
       </div>
     </div>
   );
 }
-

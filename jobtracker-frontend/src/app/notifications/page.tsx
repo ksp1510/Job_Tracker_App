@@ -8,7 +8,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { Notification, Application } from '@/lib/types';
-import { formatDateTime, formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -17,8 +17,9 @@ import {
   ClockIcon,
   XMarkIcon,
   PlusIcon,
-  EyeIcon,
   CheckIcon,
+  BuildingOfficeIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 
 interface ReminderForm {
@@ -29,11 +30,120 @@ interface ReminderForm {
   message: string;
 }
 
+// Notification Detail Modal Component
+const NotificationDetailModal = ({ 
+  notification, 
+  application, 
+  onClose 
+}: { 
+  notification: Notification; 
+  application?: Application; 
+  onClose: () => void;
+}) => {
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div className="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 pb-4 border-b">
+          <h3 className="text-xl font-semibold text-gray-900">
+            Notification Details
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-4">
+          {/* Type Badge */}
+          <div className="flex items-center space-x-2">
+            {notification.type === 'INTERVIEW' ? (
+              <CalendarIcon className="h-6 w-6 text-yellow-500" />
+            ) : notification.type === 'DEADLINE' ? (
+              <ClockIcon className="h-6 w-6 text-red-500" />
+            ) : (
+              <BellIcon className="h-6 w-6 text-blue-500" />
+            )}
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+              {notification.type}
+            </span>
+          </div>
+
+          {/* Application Info */}
+          {application && (
+            <div className="bg-indigo-50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center space-x-2">
+                <BriefcaseIcon className="h-5 w-5 text-indigo-600" />
+                <span className="font-semibold text-gray-900">
+                  {application.jobTitle}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <BuildingOfficeIcon className="h-5 w-5 text-indigo-600" />
+                <span className="text-gray-700">
+                  {application.companyName}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Message */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Message
+            </label>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-900 whitespace-pre-wrap">
+                {notification.message}
+              </p>
+            </div>
+          </div>
+
+          {/* Scheduled Time */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Scheduled For
+            </label>
+            <div className="flex items-center space-x-2 text-gray-900">
+              <CalendarIcon className="h-5 w-5 text-gray-500" />
+              <span>{formatDateTime(notification.notifyAt)}</span>
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <span className="text-sm text-gray-500">
+              Status: {notification.read ? 'Read' : 'Unread'}
+            </span>
+            <span className="text-sm text-gray-500">
+              Sent: {notification.sent ? 'Yes' : 'Pending'}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function NotificationsPage() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('unread');
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   // Fetch notifications
   const { data: allNotifications = [], isLoading } = useQuery({
@@ -49,11 +159,11 @@ export default function NotificationsPage() {
     enabled: isAuthenticated,
   });
 
-  // Fetch applications for reminder form
+  // Fetch applications for displaying in notifications
   const { data: applications = [] } = useQuery({
     queryKey: ['applications'],
     queryFn: () => apiClient.getApplications(),
-    enabled: isAuthenticated && showReminderForm,
+    enabled: isAuthenticated,
   });
 
   // Form for creating reminders
@@ -153,6 +263,19 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.read) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    // Show detail modal
+    setSelectedNotification(notification);
+  };
+
+  const getApplicationForNotification = (notification: Notification) => {
+    return applications.find((app: Application) => app.id === notification.applicationId);
+  };
+
   const displayedNotifications = activeTab === 'unread' ? unreadNotifications : allNotifications;
 
   if (!isAuthenticated) {
@@ -238,60 +361,102 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {displayedNotifications.map((notification: Notification) => (
-                <li key={notification.id} className={`p-6 ${!notification.read ? 'bg-blue-50' : ''}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="flex-shrink-0">
-                        {notification.type === 'INTERVIEW' ? (
-                          <CalendarIcon className="h-6 w-6 text-yellow-500" />
-                        ) : notification.type === 'DEADLINE' ? (
-                          <ClockIcon className="h-6 w-6 text-red-500" />
-                        ) : (
-                          <BellIcon className="h-6 w-6 text-blue-500" />
-                        )}
+              {displayedNotifications.map((notification: Notification) => {
+                const application = getApplicationForNotification(notification);
+                
+                return (
+                  <li 
+                    key={notification.id} 
+                    className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${
+                      !notification.read ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3 flex-1">
+                        <div className="flex-shrink-0">
+                          {notification.type === 'INTERVIEW' ? (
+                            <CalendarIcon className="h-6 w-6 text-yellow-500" />
+                          ) : notification.type === 'DEADLINE' ? (
+                            <ClockIcon className="h-6 w-6 text-red-500" />
+                          ) : (
+                            <BellIcon className="h-6 w-6 text-blue-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {/* Application Info */}
+                          {application && (
+                            <div className="mb-2">
+                              <div className="flex items-center text-sm font-semibold text-gray-900">
+                                <BriefcaseIcon className="h-4 w-4 mr-1 text-indigo-600" />
+                                {application.jobTitle}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <BuildingOfficeIcon className="h-4 w-4 mr-1 text-indigo-600" />
+                                {application.companyName}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Message */}
+                          <p className="text-sm text-gray-900 mb-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          
+                          {/* Time and Type */}
+                          <div className="flex items-center space-x-3 mt-2">
+                            <p className="text-xs text-gray-500">
+                              {formatDateTime(notification.notifyAt)}
+                            </p>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                              {notification.type.toLowerCase()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900 mb-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatDateTime(notification.notifyAt)}
-                        </p>
-                        {notification.type && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mt-2">
-                            {notification.type.toLowerCase()}
-                          </span>
+                      
+                      <div className="flex items-center space-x-2 ml-4">
+                        {!notification.read && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsReadMutation.mutate(notification.id);
+                            }}
+                            className="p-1 text-gray-400 hover:text-green-600"
+                            title="Mark as read"
+                          >
+                            <CheckIcon className="h-4 w-4" />
+                          </button>
                         )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 ml-4">
-                      {!notification.read && (
                         <button
-                          onClick={() => markAsReadMutation.mutate(notification.id)}
-                          className="p-1 text-gray-900 hover:text-green-600"
-                          title="Mark as read"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotificationMutation.mutate(notification.id);
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete notification"
                         >
-                          <CheckIcon className="h-4 w-4" />
+                          <XMarkIcon className="h-4 w-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => deleteNotificationMutation.mutate(notification.id)}
-                        className="p-1 text-gray-900 hover:text-red-600"
-                        title="Delete notification"
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
-        {/* Create Reminder Modal */}
+        {/* Notification Detail Modal */}
+        {selectedNotification && (
+          <NotificationDetailModal
+            notification={selectedNotification}
+            application={getApplicationForNotification(selectedNotification)}
+            onClose={() => setSelectedNotification(null)}
+          />
+        )}
+
+        {/* Create Reminder Modal - keeping existing form */}
         {showReminderForm && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
@@ -299,7 +464,7 @@ export default function NotificationsPage() {
                 <h3 className="text-lg font-medium text-gray-900">Create Reminder</h3>
                 <button
                   onClick={() => setShowReminderForm(false)}
-                  className="text-gray-900 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
@@ -396,7 +561,7 @@ export default function NotificationsPage() {
                         ? 'Complete your assessment soon!'
                         : 'Enter your reminder message...'
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                   {errors.message && (
                     <p className="mt-1 text-sm text-red-600">{errors.message.message}</p>
@@ -408,7 +573,7 @@ export default function NotificationsPage() {
                   <button
                     type="button"
                     onClick={() => setShowReminderForm(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-900 bg-white hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancel
                   </button>

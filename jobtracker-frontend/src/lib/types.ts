@@ -33,7 +33,7 @@ export interface Application {
     updatedAt?: string;              // ADDED
     referral?: string;
     interviewDate?: string;
-    assessmentDate?: string;
+    assessmentDeadline?: string;
 }
 
 export enum ApplicationStatus {
@@ -69,6 +69,7 @@ export interface SavedJob {
     id: string;
     userId: string;
     jobListingId: string;
+    applyUrl?: string;
     savedAt: string;
     notes?: string;
     applied?: boolean;           // ADDED
