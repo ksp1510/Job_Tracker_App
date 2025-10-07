@@ -3,11 +3,12 @@
 // src/app/jobs/[id]/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
+import { JobListing } from '@/lib/types';
 import { useParams, useRouter } from 'next/navigation';
 import { formatDate, timeAgo, formatSalary } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -42,6 +43,7 @@ export default function JobDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const jobId = params.id as string;
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [showApplyModal, setShowApplyModal] = useState(false);
 
   // Fetch job details
@@ -88,16 +90,58 @@ export default function JobDetailPage() {
     },
   });
 
+  const markAsAppliedMutation = useMutation({
+      mutationFn: async (job: JobListing) => {
+        const user = await apiClient.getCurrentUser();
+        
+        return apiClient.createApplication({
+          userId: user.userId,
+          companyName: job.company,
+          jobTitle: job.title,
+          jobLocation: job.location,
+          jobDescription: job.description,
+          jobLink: job.applyUrl || undefined,
+          status: 'APPLIED' as any,
+          salary: job.salary || job.salaryRange || undefined,
+          appliedDate: new Date().toISOString().split('T')[0],
+          notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
+          externalJobId: job.id,
+        });
+      },
+      onSuccess: (data, job) => {
+        queryClient.invalidateQueries({ queryKey: ['applications'] });
+        
+        // Update local state and localStorage immediately
+        setAppliedJobs(prev => {
+          const newSet = new Set([...prev, job.id]);
+          localStorage.setItem('appliedJobs', JSON.stringify([...newSet]));
+          console.log('✅ Job marked as applied:', job.id);
+          return newSet;
+        });
+        
+        toast.success('Job marked as applied');
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || 'Failed to mark job as applied');
+      }
+    });
+
+    const isJobApplied = (jobId: string) => {
+        return appliedJobs.has(jobId);
+      };
+    
+      const handleMarkAsApplied = (job: JobListing) => {
+        if (window.confirm(`Mark "${job.title}" at ${job.company} as applied?`)) {
+          markAsAppliedMutation.mutate(job);
+        }
+      };
+
   const handleSaveToggle = () => {
     if (isJobSaved) {
       unsaveJobMutation.mutate(savedJob.id);
     } else {
       saveJobMutation.mutate();
     }
-  };
-
-  const handleTrackApplication = () => {
-    router.push(`/applications/new?jobId=${jobId}`);
   };
 
   if (!isAuthenticated) {
@@ -147,7 +191,7 @@ export default function JobDetailPage() {
             <div className="mt-6">
               <Link
                 href="/jobs"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md cursor-pointer shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
               >
                 <ArrowLeftIcon className="-ml-1 mr-2 h-5 w-5" />
                 Back to Job Search
@@ -275,7 +319,7 @@ export default function JobDetailPage() {
                 </a>
               ) : (
                 <><button
-                    className="btn-disabled"
+                    className="btn-disabled cursor-not-allowed text-gray-600"
                     disabled
                     title="No direct application link available"
                   >
@@ -291,12 +335,35 @@ export default function JobDetailPage() {
                     </a></>
             )}
               
-              <button
-                onClick={handleTrackApplication}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-              >
-                Mark as Applied
-              </button>
+                  <button
+                          onClick={() => handleMarkAsApplied(job)}
+                          disabled={markAsAppliedMutation.isPending || isJobApplied(job.id)}
+                          className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm transition-all duration-200 ${
+                            isJobApplied(job.id)
+                              ? 'text-green-700 bg-green-100 cursor-not-allowed border border-green-300'
+                              : 'text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 border border-transparent'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {markAsAppliedMutation.isPending ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Marking...
+                            </>
+                          ) : isJobApplied(job.id) ? (
+                            <>
+                              <CheckCircleIcon className="w-4 h-4 mr-2" />
+                              Applied ✓
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircleIcon className="w-4 h-4 mr-2" />
+                              Mark as Applied
+                            </>
+                          )}
+                  </button>
             </div>
           </div>
         </div>

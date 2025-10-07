@@ -272,7 +272,7 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
                         .host("serpapi.com")
                         .path("/search.json")
                         .queryParam("engine", "google_jobs")
-                        .queryParam("q", query)
+                        .queryParam("q", query.trim())
                         .queryParam("location", location)
                         .queryParam("gl", countryCode)  // Country code
                         .queryParam("hl", "en")         // Language

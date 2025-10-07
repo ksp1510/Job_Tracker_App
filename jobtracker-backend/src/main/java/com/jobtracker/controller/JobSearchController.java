@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/jobs")
@@ -50,8 +51,12 @@ public class JobSearchController {
         
         if (cachedResults.isPresent()) {
             Page<JobListing> jobs = cachedResults.get();
+            
+            // FIXED: Remove duplicates based on externalId
+            List<JobListing> uniqueJobs = removeDuplicates(jobs.getContent());
+            
             PaginatedJobResponse response = new PaginatedJobResponse(
-                jobs.getContent(),
+                uniqueJobs,
                 jobs.getTotalElements(),
                 jobs.getTotalPages(),
                 jobs.getNumber(),
@@ -64,7 +69,7 @@ public class JobSearchController {
     }
 
     /**
-     * Search jobs with filters - FIXED: Returns custom DTO instead of Spring Page
+     * Search jobs with filters - FIXED: Remove duplicates
      */
     @GetMapping("/search")
     public ResponseEntity<PaginatedJobResponse> searchJobs(
@@ -82,12 +87,15 @@ public class JobSearchController {
         Page<JobListing> jobs = jobSearchService.searchJobs(
                 query, location, jobType, minSalary, maxSalary, skills, page, size, userId);
         
+        // FIXED: Remove duplicates based on externalId
+        List<JobListing> uniqueJobs = removeDuplicates(jobs.getContent());
+        
         // Convert Spring Page to custom DTO
         PaginatedJobResponse response = new PaginatedJobResponse(
-            jobs.getContent(),
+            uniqueJobs,
             jobs.getTotalElements(),
             jobs.getTotalPages(),
-            jobs.getNumber(),  // Spring uses 'number' for current page
+            jobs.getNumber(),
             jobs.getSize()
         );
         
@@ -116,7 +124,7 @@ public class JobSearchController {
     }
 
     /**
-     * Save/bookmark a job - FIXED: Removed userId from body, returns SavedJob instead of Optional
+     * Save/bookmark a job
      */
     @PostMapping("/{id}/save")
     public ResponseEntity<SavedJob> saveJob(
@@ -168,6 +176,19 @@ public class JobSearchController {
         return ResponseEntity.ok(jobSearchService.getSearchHistory(userId));
     }
 
+    // FIXED: Helper method to remove duplicate jobs
+    private List<JobListing> removeDuplicates(List<JobListing> jobs) {
+        return jobs.stream()
+                .collect(Collectors.toMap(
+                    job -> job.getExternalId() != null ? job.getExternalId() : job.getId(),
+                    job -> job,
+                    (existing, replacement) -> existing // Keep first occurrence
+                ))
+                .values()
+                .stream()
+                .collect(Collectors.toList());
+    }
+
     // Helper method
     private String extractUserId(String authHeader) {
         String token = authHeader.replace("Bearer ", "");
@@ -185,13 +206,12 @@ public class JobSearchController {
         private final boolean hasCachedResults;
     }
 
-    // FIXED: Custom pagination response DTO to match frontend expectations
     @Data
     static class PaginatedJobResponse {
         private final List<JobListing> content;
         private final long totalElements;
         private final int totalPages;
-        private final int page;  // Current page number
+        private final int page;
         private final int size;
     }
 }

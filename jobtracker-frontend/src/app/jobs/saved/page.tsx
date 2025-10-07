@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { SavedJob, JobListing } from '@/lib/types';
 import { formatDate, timeAgo } from '@/lib/utils';
@@ -21,6 +21,7 @@ import {
   BriefcaseIcon,
   EyeIcon,
   PlusCircleIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 export default function SavedJobsPage() {
@@ -36,15 +37,22 @@ export default function SavedJobsPage() {
   });
 
   // FIXED: Fetch job details for each saved job
-  const savedJobsWithDetails = savedJobs.map((savedJob: SavedJob) => {
-    const { data: jobDetails } = useQuery({
+  const jobDetailsQueries = useQueries({
+    queries: savedJobs.map((savedJob: SavedJob) => ({
       queryKey: ['job', savedJob.jobListingId],
       queryFn: () => apiClient.getJob(savedJob.jobListingId),
       enabled: !!savedJob.jobListingId,
-    });
-    
-    return { ...savedJob, jobDetails };
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    })),
   });
+  
+  // Combine saved jobs with their details
+  const savedJobsWithDetails = savedJobs.map((savedJob: SavedJob, index: number) => ({
+    ...savedJob,
+    jobDetails: jobDetailsQueries[index]?.data,
+    isLoadingDetails: jobDetailsQueries[index]?.isLoading,
+  }));
+
 
   // Unsave job mutation
   const unsaveJobMutation = useMutation({
@@ -111,10 +119,10 @@ export default function SavedJobsPage() {
         {/* Search */}
         <div className="px-4 py-4 sm:px-0">
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+          
             <input
               type="text"
-              placeholder="Search saved jobs..."
+              placeholder="Search from saved jobs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -229,14 +237,27 @@ export default function SavedJobsPage() {
                         >
                           <EyeIcon className="h-5 w-5" />
                         </Link>
-                        <Link
-                          href={`/applications/new?jobId=${item.jobListingId}`}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                          title="Apply to this job"
-                        >
-                          <PlusCircleIcon className="h-5 w-5 mr-1" />
-                          Apply
-                        </Link>
+                        {item.applyUrl ? (
+                            <a
+                              href={item.applyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                            >
+                              <ArrowTopRightOnSquareIcon className="-ml-1 mr-2 h-5 w-5" />
+                              Apply on Company Site
+                            </a>
+                          ) : (
+                            <><a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(item.jobDetails?.company || '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                                title="Search for this job on Google"
+                              >
+                                  🔍 Search Company
+                                </a></>
+                        )}
                         <button
                           onClick={() => handleUnsaveJob(item.id, job?.title)}
                           disabled={unsaveJobMutation.isPending}

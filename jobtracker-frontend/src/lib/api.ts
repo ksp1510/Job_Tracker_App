@@ -67,6 +67,38 @@ class ApiClient {
     return response.data;
   }
 
+  // User settings endpoints
+  async updateNotificationPreferences(
+    notificationsEnabled: boolean,
+    emailEnabled: boolean,
+    inAppEnabled: boolean
+  ): Promise<User> {
+    const response = await this.client.put('/users/notification-preferences', {
+      notificationsEnabled,
+      emailEnabled,
+      inAppEnabled,
+    });
+    return response.data;
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.client.post('/users/change-password', {
+      currentPassword,
+      newPassword,
+    });
+  }
+
+  async changeEmail(newEmail: string, password: string): Promise<void> {
+    await this.client.post('/users/change-email', {
+      newEmail,
+      password,
+    });
+  }
+
+  async deleteAccount(): Promise<void> {
+    await this.client.delete('/users/delete-account');
+  }
+
   // Application endpoints
   async getApplications(): Promise<Application[]> {
     const response = await this.client.get('/applications');
