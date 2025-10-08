@@ -60,27 +60,26 @@ public class SesService {
      */
     public void sendHtmlEmail(String toAddress, String subject, String htmlBody) {
         try {
-            String recipientEmail = "ksp1510@gmail.com"; // For testing
-            
+            // FIXED: Use actual recipient email instead of hardcoded test email
             Destination destination = Destination.builder()
-                    .toAddresses(recipientEmail)
+                    .toAddresses(toAddress)  // Use actual recipient
                     .build();
-
+    
             Message msg = Message.builder()
                     .subject(Content.builder().data(subject).build())
                     .body(Body.builder()
                             .html(Content.builder().data(htmlBody).build())
                             .build())
                     .build();
-
+    
             SendEmailRequest req = SendEmailRequest.builder()
                     .destination(destination)
                     .message(msg)
-                    .source(senderEmail) // Must be verified in SES
+                    .source(senderEmail)
                     .build();
-
+    
             SendEmailResponse response = sesClient.sendEmail(req);
-            System.out.println("📧 Email sent successfully to " + recipientEmail + 
+            System.out.println("📧 Email sent successfully to " + toAddress + 
                              " (MessageId: " + response.messageId() + ")");
             
         } catch (Exception e) {

@@ -53,13 +53,15 @@ public class UserController {
         
         String token = authorization.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
-        
-        User updatedUser = notificationService.updateNotificationPreferences(
-            userId,
-            request.isNotificationsEnabled(),
-            request.isEmailEnabled(),
-            request.isInAppEnabled()
-        );
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Update notification preferences
+        user.setNotificationEnabled(request.isNotificationsEnabled());
+        user.setEmailNotificationsEnabled(request.isEmailEnabled());
+        user.setInAppNotificationsEnabled(request.isInAppEnabled());     
+        User updatedUser = userRepository.save(user);
         
         return ResponseEntity.ok(updatedUser);
     }
