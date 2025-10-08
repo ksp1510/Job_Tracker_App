@@ -139,13 +139,24 @@ public class NotificationService {
      * ENHANCED: Send emails via AWS SES
      */
     public void processDueNotifications() {
-        List<Notification> due = notificationRepository.findBySentFalseAndNotifyAtBefore(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        List<Notification> due = notificationRepository
+            .findBySentFalseAndNotifyAtBefore(now);
+
         System.out.println("🔔 Processing " + due.size() + " due notifications...");
     
         for (Notification n : due) {
             try {
+
+                // Skip if notification time is in the future
+                if (n.getNotifyAt().isAfter(now)) {
+                    System.out.println("⏭️ Skipping notification: notifyAt is in the future: " + n.getNotifyAt());
+                    continue;
+                }
+
                 User user = userRepository.findById(n.getUserId()).orElse(null);
                 if (user == null || !user.isNotificationEnabled()) {
+                    System.out.println("⏭️ Skipping notification: user is disabled");
                     n.setSent(true);
                     notificationRepository.save(n);
                     continue;

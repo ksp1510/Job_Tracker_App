@@ -4,6 +4,7 @@ import com.jobtracker.config.JwtUtil;
 import com.jobtracker.model.JobListing;
 import com.jobtracker.model.JobSearch;
 import com.jobtracker.model.SavedJob;
+import com.jobtracker.repository.SavedJobRepository;
 import com.jobtracker.service.JobSearchService;
 import com.jobtracker.exception.ResourceNotFoundException;
 import lombok.Data;
@@ -20,10 +21,12 @@ import java.util.stream.Collectors;
 public class JobSearchController {
 
     private final JobSearchService jobSearchService;
+    private final SavedJobRepository savedJobRepository;
     private final JwtUtil jwtUtil;
 
-    public JobSearchController(JobSearchService jobSearchService, JwtUtil jwtUtil) {
+    public JobSearchController(JobSearchService jobSearchService, SavedJobRepository savedJobRepository, JwtUtil jwtUtil) {
         this.jobSearchService = jobSearchService;
+        this.savedJobRepository = savedJobRepository;
         this.jwtUtil = jwtUtil;
     }
 
@@ -134,11 +137,19 @@ public class JobSearchController {
         
         String userId = extractUserId(authHeader);
         String notes = request != null ? request.getNotes() : null;
-        
+
+        try {
+            Optional<SavedJob> existing = savedJobRepository.findByUserIdAndJobListingId(userId, id);
+            if (existing.isPresent()) {
+                return ResponseEntity.ok(existing.get());
+            }
         SavedJob savedJob = jobSearchService.saveJob(userId, id, notes)
             .orElseThrow(() -> new RuntimeException("Failed to save job"));
         
         return ResponseEntity.ok(savedJob);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save job: " + e.getMessage());
+        }
     }
 
     /**

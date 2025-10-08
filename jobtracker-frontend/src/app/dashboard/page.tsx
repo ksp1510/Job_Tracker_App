@@ -499,7 +499,10 @@ export default function DashboardPage() {
                         <li 
                           key={application.id} 
                           className="py-4 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors"
-                          onClick={() => setSelectedInterview(application)}
+                          onClick={() => { 
+                            console.log("Clicked interview: ", application);
+                            setSelectedInterview(application);
+                          }}
                         >
                           <div className="flex items-center space-x-4">
                             <div className="flex-shrink-0">
