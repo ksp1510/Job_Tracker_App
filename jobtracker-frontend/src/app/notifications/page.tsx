@@ -276,7 +276,9 @@ export default function NotificationsPage() {
     return applications.find((app: Application) => app.id === notification.applicationId);
   };
 
-  const displayedNotifications = activeTab === 'unread' ? unreadNotifications : allNotifications;
+  const displayedNotifications = activeTab === 'unread' 
+    ? unreadNotifications.filter(n => new Date(n.notifyAt) <= new Date()) 
+    : allNotifications;
 
   if (!isAuthenticated) {
     return <div>Loading...</div>;
