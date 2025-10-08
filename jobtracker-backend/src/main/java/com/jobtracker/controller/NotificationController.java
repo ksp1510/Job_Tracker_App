@@ -5,6 +5,7 @@ import com.jobtracker.model.Application;
 import com.jobtracker.model.Notification;
 import com.jobtracker.model.User;
 import com.jobtracker.repository.NotificationRepository;
+import com.jobtracker.repository.UserRepository;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.service.NotificationService;
 import com.jobtracker.exception.ResourceNotFoundException;
@@ -30,37 +31,71 @@ public class NotificationController {
     private final NotificationRepository repository;
     private final ApplicationService applicationService;
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     public NotificationController(NotificationService service, 
                                 NotificationRepository repository,
                                 ApplicationService applicationService,
-                                JwtUtil jwtUtil) {
+                                JwtUtil jwtUtil,
+                                UserRepository userRepository) {
         this.service = service;
         this.repository = repository;
         this.applicationService = applicationService;
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     // ================ USER NOTIFICATION MANAGEMENT ================
 
     /**
-     * Get all notifications for logged-in user
+     * Get all notifications for logged-in user - FIXED: Filter by preferences
      */
     @GetMapping
     public ResponseEntity<List<Notification>> getUserNotifications(
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
+        
+        // Check if in-app notifications are enabled
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        if (!user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
+            System.out.println("⚠️ In-app notifications disabled for user: " + userId);
+            return ResponseEntity.ok(List.of()); // Return empty list
+        }
+        
         return ResponseEntity.ok(service.getUserNotifications(userId));
     }
 
     /**
-     * Get unread notifications for logged-in user
+     * Get unread notifications for logged-in user - FIXED: Filter by preferences and time
      */
     @GetMapping("/unread")
     public ResponseEntity<List<Notification>> getUnreadNotifications(
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(repository.findByUserIdAndReadFalseOrderByNotifyAtDesc(userId));
+        
+        // Check if in-app notifications are enabled
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        if (!user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
+            System.out.println("⚠️ In-app notifications disabled for user: " + userId);
+            return ResponseEntity.ok(List.of()); // Return empty list
+        }
+        
+        // FIXED: Only return notifications that are due (notifyAt is in the past)
+        LocalDateTime now = LocalDateTime.now();
+        List<Notification> allUnread = repository.findByUserIdAndReadFalseOrderByNotifyAtDesc(userId);
+        
+        // Filter to only show notifications that should be displayed now
+        List<Notification> dueNotifications = allUnread.stream()
+                .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().isEqual(now))
+                .toList();
+        
+        System.out.println("📱 Returning " + dueNotifications.size() + " due notifications out of " + allUnread.size() + " total unread");
+        
+        return ResponseEntity.ok(dueNotifications);
     }
 
     /**
@@ -101,10 +136,10 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
-    // ================ NOTIFICATION CREATION - FIXED ================
+    // ================ NOTIFICATION CREATION ================
 
     /**
-     * Create interview reminder for specific application - FIXED
+     * Create interview reminder - FIXED: Set notifyAt to 24 hours before interview
      */
     @PostMapping("/interview-reminder")
     public ResponseEntity<Notification> createInterviewReminder(
@@ -121,19 +156,36 @@ public class NotificationController {
         app.setInterviewDate(request.getInterviewDate());
         applicationService.updateApplication(app.getId(), userId, app);
         
-        // Create notification
-        Notification notification = service.createInterviewReminder(
-                userId, 
-                request.getApplicationId(), 
-                request.getInterviewDate(),
-                request.getCustomMessage()
-        );
+        // FIXED: Calculate notification time (24 hours before interview)
+        LocalDateTime interviewDateTime = request.getInterviewDate();
+        LocalDateTime notifyAt = interviewDateTime.minusDays(1); // 24 hours before
         
-        return ResponseEntity.ok(notification);
+        System.out.println("📅 Interview scheduled for: " + interviewDateTime);
+        System.out.println("🔔 Reminder will be sent at: " + notifyAt);
+        
+        // Create notification with correct notifyAt time
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setApplicationId(request.getApplicationId());
+        notification.setMessage(request.getCustomMessage() != null ? 
+            request.getCustomMessage() : 
+            "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
+        notification.setNotifyAt(notifyAt); // 24 hours before
+        notification.setType(Notification.NotificationType.INTERVIEW);
+        notification.setChannel(Notification.Channel.IN_APP);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setRead(false);
+        notification.setSent(false);
+        
+        Notification saved = repository.save(notification);
+        
+        System.out.println("✅ Interview reminder created - will notify at: " + saved.getNotifyAt());
+        
+        return ResponseEntity.ok(saved);
     }
 
     /**
-     * Create assessment deadline reminder for specific application - FIXED
+     * Create assessment deadline reminder - FIXED: Set notifyAt to 24 hours before deadline
      */
     @PostMapping("/deadline-reminder")
     public ResponseEntity<Notification> createDeadlineReminder(
@@ -150,19 +202,36 @@ public class NotificationController {
         app.setAssessmentDeadline(request.getAssessmentDeadline());
         applicationService.updateApplication(app.getId(), userId, app);
         
-        // Create notification
-        Notification notification = service.createAssessmentDeadlineReminder(
-                userId, 
-                request.getApplicationId(), 
-                request.getAssessmentDeadline(),
-                request.getCustomMessage()
-        );
+        // FIXED: Calculate notification time (24 hours before deadline)
+        LocalDateTime deadlineDateTime = request.getAssessmentDeadline();
+        LocalDateTime notifyAt = deadlineDateTime.minusDays(1); // 24 hours before
         
-        return ResponseEntity.ok(notification);
+        System.out.println("📅 Assessment deadline: " + deadlineDateTime);
+        System.out.println("🔔 Reminder will be sent at: " + notifyAt);
+        
+        // Create notification with correct notifyAt time
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setApplicationId(request.getApplicationId());
+        notification.setMessage(request.getCustomMessage() != null ? 
+            request.getCustomMessage() : 
+            "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
+        notification.setNotifyAt(notifyAt); // 24 hours before
+        notification.setType(Notification.NotificationType.DEADLINE);
+        notification.setChannel(Notification.Channel.IN_APP);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setRead(false);
+        notification.setSent(false);
+        
+        Notification saved = repository.save(notification);
+        
+        System.out.println("✅ Deadline reminder created - will notify at: " + saved.getNotifyAt());
+        
+        return ResponseEntity.ok(saved);
     }
 
     /**
-     * Create custom notification - FIXED and UNCOMMENTED
+     * Create custom notification - User sets their own notifyAt time
      */
     @PostMapping("/custom")
     public ResponseEntity<Notification> createCustomNotification(
@@ -171,16 +240,23 @@ public class NotificationController {
         
         String userId = extractUserId(authHeader);
         
+        System.out.println("📅 Custom notification scheduled for: " + request.getNotifyAt());
+        
         Notification n = new Notification();
         n.setUserId(userId);
         n.setApplicationId(request.getApplicationId());
         n.setMessage(request.getMessage());
-        n.setNotifyAt(request.getNotifyAt());
+        n.setNotifyAt(request.getNotifyAt()); // User-specified time
         n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.CUSTOM);
         n.setChannel(request.getChannel() != null ? request.getChannel() : Notification.Channel.IN_APP);
         n.setCreatedAt(LocalDateTime.now());
+        n.setRead(false);
+        n.setSent(false);
         
         Notification saved = repository.save(n);
+        
+        System.out.println("✅ Custom notification created - will notify at: " + saved.getNotifyAt());
+        
         return ResponseEntity.ok(saved);
     }
 
@@ -208,7 +284,7 @@ public class NotificationController {
     // ================ REAL-TIME NOTIFICATIONS ================
 
     /**
-     * SSE endpoint for live notification updates
+     * SSE endpoint for live notification updates - FIXED: Filter by preferences
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<List<Notification>>> streamNotifications(
@@ -218,11 +294,29 @@ public class NotificationController {
         
         return Flux.interval(Duration.ofSeconds(10)) // check every 10 sec
                 .map(seq -> {
+                    // Check user preferences
+                    User user = userRepository.findById(userId).orElse(null);
+                    
+                    if (user == null || !user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
+                        return ServerSentEvent.<List<Notification>>builder()
+                                .id(String.valueOf(seq))
+                                .event("notification-update")
+                                .data(List.of())
+                                .build();
+                    }
+                    
+                    // FIXED: Only return notifications that are due
+                    LocalDateTime now = LocalDateTime.now();
                     List<Notification> unread = repository.findByUserIdAndReadFalse(userId);
+                    
+                    List<Notification> dueNotifications = unread.stream()
+                            .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().isEqual(now))
+                            .toList();
+                    
                     return ServerSentEvent.<List<Notification>>builder()
                             .id(String.valueOf(seq))
                             .event("notification-update")
-                            .data(unread)
+                            .data(dueNotifications)
                             .build();
                 });
     }

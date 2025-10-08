@@ -175,6 +175,14 @@ export default function DashboardPage() {
     queryKey: ['unread-notifications'],
     queryFn: () => apiClient.getUnreadNotifications(),
     enabled: isAuthenticated,
+    refetchInterval: 30000,
+    select: (data) => {
+      const now = new Date();
+      return data.filter(notification => {
+        const notifAt = new Date(notification.notifyAt);
+        return notifAt <= now;
+      });
+    },
   });
 
   if (!isAuthenticated) {
