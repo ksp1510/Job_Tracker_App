@@ -1,6 +1,8 @@
 package com.jobtracker.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.*;
 
@@ -8,7 +10,10 @@ import software.amazon.awssdk.services.ses.model.*;
 public class SesService {
 
     private final SesClient sesClient;
-    private final String senderEmail = "ksp1510@gmail.com";
+
+    @Value("${AWS_SES_FROM_EMAIL:ksp1510@gmail.com}")
+    private String senderEmail;
+
 
     public SesService(SesClient sesClient) {
         this.sesClient = sesClient;

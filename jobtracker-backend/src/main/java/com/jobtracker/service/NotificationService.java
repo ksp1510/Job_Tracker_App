@@ -220,14 +220,14 @@ public class NotificationService {
 
                 User user = userRepository.findById(n.getUserId()).orElse(null);
                 if (user == null) {
-                    System.out.println("User not found for notification ID: " + n.getId());
+                    System.out.println("❌ User not found for notification ID: " + n.getId());
                     n.setSent(true);
                     notificationRepository.save(n);
                     continue;
                 }
 
                 if (!user.isNotificationEnabled()) {
-                    System.out.println("User notifications disabled for notification ID: " + n.getId());
+                    System.out.println("⚠️ User notifications disabled for notification ID: " + n.getId());
                     n.setSent(true);
                     notificationRepository.save(n);
                     continue;
@@ -248,13 +248,24 @@ public class NotificationService {
                 // Get application details for email
                 Application app = n.getApplicationId() != null ? 
                     applicationRepository.findById(n.getApplicationId()).orElse(null) : null;
-    
+                
+                boolean emailSent = false;
+                
                 // Send notification based on channel
                 if (n.getChannel() == Notification.Channel.EMAIL && user.isEmailNotificationsEnabled()) {
                     System.out.println("📧 Sending email notification to " + user.getEmail() + ": " + n.getMessage());
-                    sendEmailNotification(user, n, app);
+                    try {
+                        sendEmailNotification(user, n, app);
+                        emailSent = true;
+                        System.out.println("✅ Email notification sent successfully to " + user.getEmail());
+                    } catch (Exception emailError) {
+                        System.err.println("❌ Failed to send email: " + emailError.getMessage());
+                        emailError.printStackTrace();
+                        continue;
+                    }
                 } else {
                     System.out.println("⚠️ Email notifications disabled for user: " + user.getEmail());
+                    emailSent = true;
                 }
                 
                 // Always create in-app notification (if user has in-app enabled)
@@ -265,8 +276,11 @@ public class NotificationService {
                 }
     
                 // Mark as sent
-                n.setSent(true);
-                notificationRepository.save(n);
+                if (emailSent) {
+                    n.setSent(true);
+                    notificationRepository.save(n);
+                    System.out.println("✅ Notification marked as sent: " + n.getId());
+                }
                 
                 System.out.println("✅ Notification processed successfully");
                 System.out.println("   User: " + user.getEmail());
