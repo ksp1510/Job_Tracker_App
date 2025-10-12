@@ -37,7 +37,8 @@ interface ApplicationForm {
   appliedDate?: string;
   referral?: string;
   interviewDate?: string;
-  assessmentDate?: string;
+  assessmentDeadline?: string;
+  externalJobId: string;
 }
 
 export default function NewApplicationPage() {
@@ -72,6 +73,7 @@ export default function NewApplicationPage() {
       setValue('jobDescription', jobDetails.description);
       setValue('jobLink', jobDetails.applyUrl || '');
       setValue('salary', jobDetails.salary || jobDetails.salaryRange || '');
+      setValue('externalJobId', jobId!);
     }
   }, [jobDetails, setValue]);
 
@@ -79,6 +81,7 @@ export default function NewApplicationPage() {
     mutationFn: (data: ApplicationForm) => {
       const applicationData: Omit<Application, 'id' | 'userId'> = {
         companyName: data.companyName,
+        externalJobId: data.externalJobId,
         jobTitle: data.jobTitle,
         jobLocation: data.jobLocation,
         jobDescription: data.jobDescription,
@@ -90,7 +93,7 @@ export default function NewApplicationPage() {
         appliedDate: data.appliedDate,
         referral: data.referral,
         interviewDate: data.interviewDate,
-        assessmentDate: data.assessmentDate,
+        assessmentDeadline: data.assessmentDeadline,
       };
       return apiClient.createApplication(applicationData);
     },
@@ -258,7 +261,7 @@ export default function NewApplicationPage() {
                 </label>
                 <div className="mt-1 flex">
                   <input
-                    {...register('assessmentDate')}
+                    {...register('assessmentDeadline')}
                     type="datetime-local"
                     className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />

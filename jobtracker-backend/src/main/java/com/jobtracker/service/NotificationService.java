@@ -187,7 +187,7 @@ public class NotificationService {
      * Get all notifications for a user
      */
     public List<Notification> getUserNotifications(String userId) {
-        return notificationRepository.findByUserId(userId);
+        return notificationRepository.findByUserIdOrderByNotifyAtDesc(userId);
     }
 
     /**
