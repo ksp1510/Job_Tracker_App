@@ -92,10 +92,8 @@ export default function JobDetailPage() {
 
   const markAsAppliedMutation = useMutation({
       mutationFn: async (job: JobListing) => {
-        const user = await apiClient.getCurrentUser();
         
         return apiClient.createApplication({
-          userId: user.userId,
           companyName: job.company,
           jobTitle: job.title,
           jobLocation: job.location,

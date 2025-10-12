@@ -111,9 +111,24 @@ export default function JobSearchPage() {
   // Fetch jobs
   const { data: jobsResponse, isLoading, error, isFetching } = useQuery({
     queryKey: ['jobs', searchParams],
-    queryFn: () => apiClient.searchJobs(searchParams),
-    enabled: isAuthenticated,
-    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      // Check if we have cache first
+      const hasCached = await apiClient.checkCacheStatus();
+      
+      if (hasCached) {
+        console.log('📦 Using cached results for page:', searchParams.page);
+        const cached = await apiClient.getCachedResults(searchParams.page || 0, searchParams.size || ITEMS_PER_PAGE);
+        if (cached) {
+          return cached;
+        }
+      }
+      
+      // No cache or cache miss - do full search
+      console.log('🔍 Fetching fresh results for page:', searchParams.page);
+      return apiClient.searchJobs(searchParams);
+      },
+      enabled: isAuthenticated,
+      placeholderData: (prev) => prev,
   });
 
   // Fetch saved jobs
@@ -201,10 +216,8 @@ export default function JobSearchPage() {
   // FIXED: Mark as applied mutation
   const markAsAppliedMutation = useMutation({
     mutationFn: async (job: JobListing) => {
-      const user = await apiClient.getCurrentUser();
       
       return apiClient.createApplication({
-        userId: user.userId,
         companyName: job.company,
         jobTitle: job.title,
         jobLocation: job.location,
@@ -280,6 +293,7 @@ export default function JobSearchPage() {
 
   // FIXED: Page change handler
   const handlePageChange = (newPage: number) => {
+    console.log('📄 Page change requested:', { current: searchParams.page, new: newPage });
     setSearchParams(prev => ({ ...prev, page: newPage }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
