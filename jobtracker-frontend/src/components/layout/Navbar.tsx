@@ -39,6 +39,13 @@ export const Navbar = () => {
     queryFn: () => apiClient.getUnreadNotifications(),
     enabled: isAuthenticated,
     refetchInterval: 30000,
+    select: (data) => {
+      const now = new Date();
+      return data.filter(notification => {
+        const notifAt = new Date(notification.notifyAt);
+        return notifAt <= now; // Only show notifications that are due
+      });
+    },
   });
 
   // FIXED: Close dropdown when clicking outside
