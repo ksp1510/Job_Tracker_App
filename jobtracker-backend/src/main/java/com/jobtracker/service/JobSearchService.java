@@ -77,7 +77,7 @@ public class JobSearchService {
             System.err.println("❌ Failed to fetch jobs from external APIs: " + e.getMessage());
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedDate"));
+        Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "postedDate"));
         Page<JobListing> results = performSearch(query, location, pageable);
 
         // Update Cache
@@ -195,7 +195,24 @@ public class JobSearchService {
     }
 
     private Page<JobListing> getPageFromCache(SearchCacheEntry cached, int page, int size) {
-        return cached.getResults();
+        Page<JobListing> allResults = cached.getResults();
+        List<JobListing> allJobs = allResults.getContent();
+        
+        // Calculate pagination
+        int start = page * size;
+        int end = Math.min(start + size, allJobs.size());
+        
+        // Handle out of bounds
+        if (start >= allJobs.size()) {
+            return new PageImpl<>(List.of(), PageRequest.of(page, size), allJobs.size());
+        }
+        
+        // Extract the requested page
+        List<JobListing> pageContent = allJobs.subList(start, end);
+        
+        System.out.println("📄 Extracting page " + page + " (items " + start + "-" + end + " of " + allJobs.size() + ")");
+        
+        return new PageImpl<>(pageContent, PageRequest.of(page, size), allJobs.size());
     }
 
     /**
