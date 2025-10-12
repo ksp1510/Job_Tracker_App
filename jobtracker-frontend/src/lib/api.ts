@@ -115,7 +115,7 @@ class ApiClient {
     return response.data;
   }
 
-  async createApplication(data: Omit<Application, 'id'>): Promise<Application> {
+  async createApplication(data: Omit<Application, 'id' | 'userId'>): Promise<Application> {
     const response = await this.client.post('/applications', data);
     return response.data;
   }

@@ -9,8 +9,11 @@ import { Navbar } from '@/components/layout/Navbar';
 import { apiClient } from '@/lib/api';
 import { Application, ApplicationStatus } from '@/lib/types';
 import { getStatusColor, formatDate } from '@/lib/utils';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 
 export default function ApplicationsListPage() {
+  const router = useRouter();
   // Fetch all applications via the API
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ['applications'],
@@ -33,23 +36,33 @@ export default function ApplicationsListPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Applications</h1>
 
         {/* Status filter */}
-        <div className="mb-4">
-          <label htmlFor="statusFilter" className="mr-2 text-sm font-medium text-gray-700">
-            Filter by status:
-          </label>
-          <select
-            id="statusFilter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <label htmlFor="statusFilter" className="mr-2 text-sm font-medium text-gray-700">
+              Filter by status:
+            </label>
+            <select
+              id="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All</option>
+              {Object.values(ApplicationStatus).map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => router.push('/applications/new')}
+            className="inline-flex cursor-pointer items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
           >
-            <option value="ALL">All</option>
-            {Object.values(ApplicationStatus).map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
+            <PlusIcon className="h-5 w-5" />
+            <span>Add Application</span>
+          </button>
         </div>
 
         {/* Table / card list */}

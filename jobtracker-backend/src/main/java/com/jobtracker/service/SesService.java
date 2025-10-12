@@ -8,7 +8,7 @@ import software.amazon.awssdk.services.ses.model.*;
 public class SesService {
 
     private final SesClient sesClient;
-    private final String senderEmail = "patelkishan101097@gmail.com";
+    private final String senderEmail = "ksp1510@gmail.com";
 
     public SesService(SesClient sesClient) {
         this.sesClient = sesClient;

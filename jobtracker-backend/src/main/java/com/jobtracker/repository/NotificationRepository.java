@@ -11,6 +11,8 @@ import java.util.List;
 public interface NotificationRepository extends MongoRepository<Notification, String> {
     // FIXED: Added missing method
     List<Notification> findByUserId(String userId);
+
+    
     
     List<Notification> findByUserIdOrderByNotifyAtDesc(String userId);
     

@@ -152,12 +152,31 @@ export default function NotificationsPage() {
     enabled: isAuthenticated,
   });
 
+  // Sort in descending order (newest first)
+  /**
+  const allNotifications = useMemo(() => {
+    return [...allNotificationsData].sort((a, b) => 
+      new Date(b.notifyAt).getTime() - new Date(a.notifyAt).getTime()
+    );
+  }, [allNotificationsData]);
+  */
+
   // Fetch unread notifications
+  
   const { data: unreadNotifications = [] } = useQuery({
     queryKey: ['unread-notifications'],
     queryFn: () => apiClient.getUnreadNotifications(),
     enabled: isAuthenticated,
   });
+
+  // Sort unread as well (though backend should already do this)
+  /**
+  const unreadNotifications = useMemo(() => {
+    return [...unreadNotificationsData].sort((a, b) => 
+      new Date(b.notifyAt).getTime() - new Date(a.notifyAt).getTime()
+    );
+  }, [unreadNotificationsData]);
+  */
 
   // Fetch applications for displaying in notifications
   const { data: applications = [] } = useQuery({
