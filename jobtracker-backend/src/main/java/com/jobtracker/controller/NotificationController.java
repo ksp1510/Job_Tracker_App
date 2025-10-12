@@ -147,6 +147,8 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Verify user owns the application
         Application app = applicationService.getApplication(request.getApplicationId(), userId)
@@ -172,7 +174,12 @@ public class NotificationController {
             "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
         notification.setNotifyAt(notifyAt); // 24 hours before
         notification.setType(Notification.NotificationType.INTERVIEW);
-        notification.setChannel(Notification.Channel.IN_APP);
+        if (user.isEmailNotificationsEnabled()) {
+            notification.setChannels(List.of(Notification.Channel.EMAIL));
+        }
+        if (user.isInAppNotificationsEnabled()) {
+            notification.setChannels(List.of(Notification.Channel.IN_APP));
+        }
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
         notification.setSent(false);
@@ -193,6 +200,8 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Verify user owns the application
         Application app = applicationService.getApplication(request.getApplicationId(), userId)
@@ -218,7 +227,12 @@ public class NotificationController {
             "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
         notification.setNotifyAt(notifyAt); // 24 hours before
         notification.setType(Notification.NotificationType.DEADLINE);
-        notification.setChannel(Notification.Channel.IN_APP);
+        if (user.isEmailNotificationsEnabled()) {
+            notification.setChannels(List.of(Notification.Channel.EMAIL));
+        }
+        if (user.isInAppNotificationsEnabled()) {
+            notification.setChannels(List.of(Notification.Channel.IN_APP));
+        }
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
         notification.setSent(false);
@@ -239,6 +253,8 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         System.out.println("📅 Custom notification scheduled for: " + request.getNotifyAt());
         
@@ -248,7 +264,12 @@ public class NotificationController {
         n.setMessage(request.getMessage());
         n.setNotifyAt(request.getNotifyAt()); // User-specified time
         n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.CUSTOM);
-        n.setChannel(request.getChannel() != null ? request.getChannel() : Notification.Channel.IN_APP);
+        if (user.isEmailNotificationsEnabled()) {
+            n.setChannels(List.of(Notification.Channel.EMAIL));
+        }
+        if (user.isInAppNotificationsEnabled()) {
+            n.setChannels(List.of(Notification.Channel.IN_APP));
+        }
         n.setCreatedAt(LocalDateTime.now());
         n.setRead(false);
         n.setSent(false);

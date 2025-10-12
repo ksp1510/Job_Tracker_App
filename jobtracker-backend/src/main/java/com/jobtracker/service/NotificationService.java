@@ -53,8 +53,8 @@ public class NotificationService {
         n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
         n.setNotifyAt(notifyTime);
         n.setType(Notification.NotificationType.FOLLOW_UP);
-        n.setChannel(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP);
+        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
+                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -92,8 +92,8 @@ public class NotificationService {
         n.setMessage(message);
         n.setNotifyAt(notifyAt);
         n.setType(Notification.NotificationType.INTERVIEW);
-        n.setChannel(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP);
+        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
+                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -132,8 +132,8 @@ public class NotificationService {
         n.setMessage(message);
         n.setNotifyAt(notifyAt);
         n.setType(Notification.NotificationType.DEADLINE);
-        n.setChannel(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP);
+        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
+                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -169,9 +169,9 @@ public class NotificationService {
             n.setType(Notification.NotificationType.CUSTOM);
         }
 
-        if (n.getChannel() == null) {
-            n.setChannel(user.isEmailNotificationsEnabled() ? 
-                        Notification.Channel.EMAIL : Notification.Channel.IN_APP);
+        if (n.getChannels() == null) {
+            n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
+                        Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         }
 
         System.out.println("📅 Generic notification scheduled for: " + n.getNotifyAt());
@@ -252,7 +252,7 @@ public class NotificationService {
                 boolean emailSent = false;
                 
                 // Send notification based on channel
-                if (n.getChannel() == Notification.Channel.EMAIL && user.isEmailNotificationsEnabled()) {
+                if (n.getChannels().contains(Notification.Channel.EMAIL) && user.isEmailNotificationsEnabled()) {
                     System.out.println("📧 Sending email notification to " + user.getEmail() + ": " + n.getMessage());
                     try {
                         sendEmailNotification(user, n, app);
