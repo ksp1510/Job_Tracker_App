@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SavedJobRepository extends MongoRepository<SavedJob, String> {
-    List<SavedJob> findByUserId(String userId);
+    List<SavedJob> findByUserIdOrderBySavedAtDesc(String userId);
 
     Optional<SavedJob> findByUserIdAndJobListingId(String userId, String jobListingId);
 

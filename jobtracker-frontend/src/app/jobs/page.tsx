@@ -38,7 +38,7 @@ const JOB_TYPES = [
   { value: 'REMOTE', label: 'Remote' },
 ];
 
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 20;
 
 export default function JobSearchPage() {
   const { isAuthenticated } = useAuth();
@@ -46,6 +46,7 @@ export default function JobSearchPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
+  const [displayedJobs, setDisplayedJobs] = useState<JobListing[]>([]);
   const [searchParams, setSearchParams] = useState<JobSearchParams>({
     page: 0,
     size: ITEMS_PER_PAGE,
@@ -117,7 +118,8 @@ export default function JobSearchPage() {
       
       if (hasCached) {
         console.log('📦 Using cached results for page:', searchParams.page);
-        const cached = await apiClient.getCachedResults(searchParams.page || 0, searchParams.size || ITEMS_PER_PAGE);
+        const cached = await apiClient.getCachedResults(
+          searchParams.page || 0, searchParams.size || ITEMS_PER_PAGE);
         if (cached) {
           return cached;
         }
@@ -130,6 +132,46 @@ export default function JobSearchPage() {
       enabled: isAuthenticated,
       placeholderData: (prev) => prev,
   });
+
+  // --- interpret backend data safely with DEBUGGING ---
+  let jobs: JobListing[] = [];
+  let totalElements = 0;
+  let totalPages = 0;
+  let currentPage = 0;
+  let isClientMode = false;
+
+  if (jobsResponse) {
+    if (Array.isArray((jobsResponse as any).jobs)) {
+      // Client-side pagination mode (small dataset)
+      isClientMode = true;
+      jobs = (jobsResponse as any).jobs || [];
+      totalElements = (jobsResponse as any).totalElements || jobs.length;
+      totalPages = Math.ceil(totalElements / ITEMS_PER_PAGE);
+
+      console.log("🟢 [Pagination] CLIENT mode active");
+      console.log("📊 Total records:", totalElements, "→ Pages:", totalPages);
+
+      useEffect(() => {
+        if (isClientMode && jobs.length > 0) {
+          const initialSlice = jobs.slice(0, ITEMS_PER_PAGE);
+          setDisplayedJobs(initialSlice);
+          console.log("📦 [Client Init] Loaded initial slice:", initialSlice.length, "items");
+        }
+      }, [jobsResponse]);
+    } else {
+      // Server-side pagination mode (large dataset)
+      isClientMode = false;
+      jobs = (jobsResponse as any).content || [];
+      totalElements = (jobsResponse as any).totalElements || 0;
+      totalPages = (jobsResponse as any).totalPages || 0;
+      currentPage = (jobsResponse as any).page || 0;
+      console.log("🟣 [Pagination] SERVER mode active");
+      console.log("📄 Page:", currentPage + 1, "/", totalPages, "| Items on page:", jobs.length);
+    }
+  } else {
+    console.log("⚪ [Pagination] No jobsResponse yet (loading or cache miss)");
+  }
+
 
   // Fetch saved jobs
   const { data: savedJobs = [] as SavedJob[] } = useQuery<SavedJob[]>({
@@ -293,10 +335,25 @@ export default function JobSearchPage() {
 
   // FIXED: Page change handler
   const handlePageChange = (newPage: number) => {
-    console.log('📄 Page change requested:', { current: searchParams.page, new: newPage });
-    setSearchParams(prev => ({ ...prev, page: newPage }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    console.log("🟠 [Pagination] Page change requested:", newPage);
+  
+    if (isClientMode) {
+      const start = newPage * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE;
+      const sliced = jobs.slice(start, end);
+  
+      console.log("🧩 [Client] Showing items", start, "to", end, "of", jobs.length);
+      console.log("🧠 Current visible jobs:", sliced.map((j) => j.title).slice(0, 3), "...");
+      setDisplayedJobs(sliced);
+      setSearchParams((prev) => ({ ...prev, page: newPage }));
+    } else {
+      console.log("🔁 [Server] Fetching new page from backend:", newPage);
+      setSearchParams((prev) => ({ ...prev, page: newPage }));
+    }
+  
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  
 
   const clearFilters = () => {
     setValue('query', '');
@@ -311,10 +368,16 @@ export default function JobSearchPage() {
     return <div>Loading...</div>;
   }
 
-  const jobs = jobsResponse?.content || [];
-  const totalPages = jobsResponse?.totalPages || 0;
-  const currentPage = jobsResponse?.page || 0;
-  const totalElements = jobsResponse?.totalElements || 0;
+  const visibleJobs = isClientMode ? displayedJobs : jobs;
+
+  console.log(
+    "📈 [Render] Page:",
+    currentPage + 1,
+    "| Mode:",
+    isClientMode ? "Client" : "Server",
+    "| Total elements:",
+    totalElements
+  );
 
   // FIXED: Page numbers calculation
   const getPageNumbers = () => {
@@ -605,7 +668,7 @@ export default function JobSearchPage() {
 
             {!isLoading && !error && jobs.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {jobs.map((job: JobListing) => (
+                {visibleJobs.map((job) => (
                   <div
                     key={job.id}
                     className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-200 relative"
