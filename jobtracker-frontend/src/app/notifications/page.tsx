@@ -167,6 +167,14 @@ export default function NotificationsPage() {
     queryKey: ['unread-notifications'],
     queryFn: () => apiClient.getUnreadNotifications(),
     enabled: isAuthenticated,
+    refetchInterval: 30000,
+    select: (data) => {
+      const now = new Date();
+      return data.filter(notification => {
+        const notifAt = new Date(notification.notifyAt);
+        return notifAt <= now; // Only show notifications that are due
+      });
+    },
   });
 
   // Sort unread as well (though backend should already do this)

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -93,6 +94,20 @@ public class JobSearchController {
         // FIXED: Remove duplicates based on externalId
         List<JobListing> uniqueJobs = removeDuplicates(jobs.getContent());
         
+        long totalElements = uniqueJobs.size();
+        
+        final int THRESHOLD = 2000;
+        
+        if (totalElements <= THRESHOLD) {
+
+            ResponseEntity res = ResponseEntity.ok(Map.of(
+                "jobs", uniqueJobs,
+                "totalElements", totalElements,
+                "mode", "client"
+            ));
+            return res;
+            
+        } else {
         // Convert Spring Page to custom DTO
         PaginatedJobResponse response = new PaginatedJobResponse(
             uniqueJobs,
@@ -101,8 +116,8 @@ public class JobSearchController {
             jobs.getNumber(),
             jobs.getSize()
         );
-        
         return ResponseEntity.ok(response);
+        }
     }
 
     /**

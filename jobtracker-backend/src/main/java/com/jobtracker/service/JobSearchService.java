@@ -144,7 +144,7 @@ public class JobSearchService {
      * Get user's saved jobs
      */
     public List<SavedJob> getSavedJobs(String userId) {
-        return savedJobRepository.findByUserId(userId);
+        return savedJobRepository.findByUserIdOrderBySavedAtDesc(userId);
     }
 
     /**
