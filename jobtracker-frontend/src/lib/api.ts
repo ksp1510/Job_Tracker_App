@@ -149,9 +149,9 @@ class ApiClient {
   /**
    * Get cached results - FIXED: Handle 204 No Content response
    */
-  async getCachedResults(page = 0, size = 10): Promise<PaginatedResponse<JobListing> | null> {
+  async getCachedResults(page = 0, size = 10, query?: string, location?: string, jobType?: string, minSalary?: number, maxSalary?: number, skills?: string[]): Promise<PaginatedResponse<JobListing> | null> {
     try {
-      const response = await this.client.get('/jobs/cache', { params: { page, size } });
+      const response = await this.client.get('/jobs/cache', { params: { page, size, query, location, jobType, minSalary, maxSalary, skills } });
       return this.normalizePaginationResponse(response.data);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 204) {
@@ -164,9 +164,10 @@ class ApiClient {
   /**
    * Search jobs - FIXED: Normalize pagination response
    */
-  async searchJobs(params: JobSearchParams): Promise<PaginatedResponse<JobListing>> {
+  async searchJobs(params: JobSearchParams){
+    console.log("🔹 Fetching jobs:", params);
     const response = await this.client.get('/jobs/search', { params });
-    return this.normalizePaginationResponse(response.data);
+    return response.data;
   }
 
   /**

@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/jobs/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { JobListing, JobSearchParams, SavedJob } from '@/lib/types';
 import { useForm } from 'react-hook-form';
-import { debounce, formatSalary, timeAgo } from '@/lib/utils';
+import { formatSalary, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon,
@@ -43,10 +43,11 @@ const ITEMS_PER_PAGE = 20;
 export default function JobSearchPage() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+
   const [showFilters, setShowFilters] = useState(true);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
-  const [isSearching, setIsSearching] = useState(false);
   const [displayedJobs, setDisplayedJobs] = useState<JobListing[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [searchParams, setSearchParams] = useState<JobSearchParams>({
     page: 0,
     size: ITEMS_PER_PAGE,
@@ -67,73 +68,42 @@ export default function JobSearchPage() {
       minSalary: '',
       maxSalary: '',
       skills: '',
-    }
+    },
   });
 
   const watchedValues = watch();
 
-  // FIXED: Load applied jobs from localStorage on mount FIRST
+  // Load applied jobs from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('appliedJobs');
     if (stored) {
       try {
         const jobIds = JSON.parse(stored);
         setAppliedJobs(new Set(jobIds));
-        console.log('✅ Loaded applied jobs from localStorage:', jobIds.length);
-      } catch (e) {
-        console.error('Failed to parse stored applied jobs:', e);
+      } catch {
+        console.error('Failed to parse stored applied jobs');
       }
     }
   }, []);
 
-  // Debounced search effect
-  useEffect(() => {
-    const debouncedSearch = debounce(() => {
-      const skillsArray = watchedValues.skills 
-        ? watchedValues.skills.split(',').map(s => s.trim()).filter(s => s)
-        : undefined;
-
-      const newParams: JobSearchParams = {
-        query: watchedValues.query?.trim() || undefined,
-        location: watchedValues.location?.trim() || undefined,
-        jobType: watchedValues.jobType || undefined,
-        minSalary: watchedValues.minSalary ? parseFloat(watchedValues.minSalary) : undefined,
-        maxSalary: watchedValues.maxSalary ? parseFloat(watchedValues.maxSalary) : undefined,
-        skills: skillsArray,
-        page: 0,
-        size: ITEMS_PER_PAGE,
-      };
-      setSearchParams(newParams);
-    }, 500);
-
-    debouncedSearch();
-  }, [watchedValues]);
-
   // Fetch jobs
-  const { data: jobsResponse, isLoading, error, isFetching } = useQuery({
-    queryKey: ['jobs', searchParams],
+  const { data: jobsResponse, isLoading, error, isFetching, refetch } = useQuery({
+    queryKey: ['jobs', JSON.stringify(searchParams)],
     queryFn: async () => {
-      // Check if we have cache first
       const hasCached = await apiClient.checkCacheStatus();
-      
       if (hasCached) {
-        console.log('📦 Using cached results for page:', searchParams.page);
         const cached = await apiClient.getCachedResults(
-          searchParams.page || 0, searchParams.size || ITEMS_PER_PAGE);
-        if (cached) {
-          return cached;
-        }
+          searchParams.page ?? 0,
+          searchParams.size ?? ITEMS_PER_PAGE
+        );
+        if (cached) return cached;
       }
-      
-      // No cache or cache miss - do full search
-      console.log('🔍 Fetching fresh results for page:', searchParams.page);
       return apiClient.searchJobs(searchParams);
-      },
-      enabled: isAuthenticated,
-      placeholderData: (prev) => prev,
+    },
+    enabled: isAuthenticated,
   });
 
-  // --- interpret backend data safely with DEBUGGING ---
+  // Interpret backend data safely
   let jobs: JobListing[] = [];
   let totalElements = 0;
   let totalPages = 0;
@@ -142,182 +112,132 @@ export default function JobSearchPage() {
 
   if (jobsResponse) {
     if (Array.isArray((jobsResponse as any).jobs)) {
-      // Client-side pagination mode (small dataset)
+      // Client mode
       isClientMode = true;
       jobs = (jobsResponse as any).jobs || [];
       totalElements = (jobsResponse as any).totalElements || jobs.length;
       totalPages = Math.ceil(totalElements / ITEMS_PER_PAGE);
-
-      console.log("🟢 [Pagination] CLIENT mode active");
-      console.log("📊 Total records:", totalElements, "→ Pages:", totalPages);
-
-      useEffect(() => {
-        if (isClientMode && jobs.length > 0) {
-          const initialSlice = jobs.slice(0, ITEMS_PER_PAGE);
-          setDisplayedJobs(initialSlice);
-          console.log("📦 [Client Init] Loaded initial slice:", initialSlice.length, "items");
-        }
-      }, [jobsResponse]);
+      currentPage = searchParams.page || 0;
     } else {
-      // Server-side pagination mode (large dataset)
+      // Server mode
       isClientMode = false;
       jobs = (jobsResponse as any).content || [];
       totalElements = (jobsResponse as any).totalElements || 0;
       totalPages = (jobsResponse as any).totalPages || 0;
       currentPage = (jobsResponse as any).page || 0;
-      console.log("🟣 [Pagination] SERVER mode active");
-      console.log("📄 Page:", currentPage + 1, "/", totalPages, "| Items on page:", jobs.length);
     }
-  } else {
-    console.log("⚪ [Pagination] No jobsResponse yet (loading or cache miss)");
   }
 
+  // Slice visible jobs whenever jobs or page changes
+  useEffect(() => {
+    if (isClientMode && jobs.length > 0) {
+      const start = (searchParams.page || 0) * ITEMS_PER_PAGE;
+      setDisplayedJobs(jobs.slice(start, start + ITEMS_PER_PAGE));
+    }
+  }, [jobs, searchParams.page, isClientMode]);
 
-  // Fetch saved jobs
+  // Saved and applied jobs
   const { data: savedJobs = [] as SavedJob[] } = useQuery<SavedJob[]>({
     queryKey: ['saved-jobs'],
     queryFn: () => apiClient.getSavedJobs(),
     enabled: isAuthenticated,
   });
 
-  // Fetch applications
   const { data: applications = [] } = useQuery({
     queryKey: ['applications'],
     queryFn: () => apiClient.getApplications(),
     enabled: isAuthenticated,
   });
 
-  // FIXED: Update applied jobs from applications
   useEffect(() => {
-    if (applications && applications.length > 0) {
+    if (applications.length > 0) {
       const appliedJobIds = new Set<string>();
-      applications.forEach((app: any) => {
-        if (app.externalJobId) {
-          appliedJobIds.add(app.externalJobId);
-        }
-      });
-      
-      // Merge with existing localStorage data
+      applications.forEach((a: any) => a.externalJobId && appliedJobIds.add(a.externalJobId));
       const stored = localStorage.getItem('appliedJobs');
       if (stored) {
         try {
           const storedIds = JSON.parse(stored);
           storedIds.forEach((id: string) => appliedJobIds.add(id));
-        } catch (e) {
-          console.error('Failed to merge stored applied jobs:', e);
-        }
+        } catch {}
       }
-      
       setAppliedJobs(appliedJobIds);
       localStorage.setItem('appliedJobs', JSON.stringify([...appliedJobIds]));
-      console.log('✅ Updated applied jobs from applications:', appliedJobIds.size);
     }
   }, [applications]);
 
-  // External search mutation
+  // Mutations
   const externalSearchMutation = useMutation({
-    mutationFn: async (params: JobSearchParams) => {
-      const response = await apiClient.searchJobs(params);
-      return response;
-    },
+    mutationFn: async (params: JobSearchParams) => apiClient.searchJobs(params),
     onSuccess: (data) => {
       toast.success(`Found ${data.totalElements} jobs`);
       setIsSearching(false);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Search failed');
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Search failed');
       setIsSearching(false);
     },
   });
 
-  // Save job mutation
   const saveJobMutation = useMutation({
     mutationFn: ({ jobId, notes }: { jobId: string; notes?: string }) =>
       apiClient.saveJob(jobId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['saved-jobs'] });
-      toast.success('Job saved successfully!');
+      toast.success('Job saved successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to save job');
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to save job');
     },
   });
 
-  // Unsave job mutation
   const unsaveJobMutation = useMutation({
     mutationFn: (savedJobId: string) => apiClient.unsaveJob(savedJobId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['saved-jobs'] });
-      toast.success('Job removed from saved');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to remove saved job');
+      toast.success('Job unsaved');
     },
   });
 
-  // FIXED: Mark as applied mutation
   const markAsAppliedMutation = useMutation({
-    mutationFn: async (job: JobListing) => {
-      
-      return apiClient.createApplication({
+    mutationFn: async (job: JobListing) =>
+      apiClient.createApplication({
         companyName: job.company,
         jobTitle: job.title,
         jobLocation: job.location,
         jobDescription: job.description,
-        jobLink: job.applyUrl || undefined,
+        jobLink: job.applyUrl,
         status: 'APPLIED' as any,
-        salary: job.salary || job.salaryRange || undefined,
+        salary: job.salary || job.salaryRange,
         appliedDate: new Date().toISOString().split('T')[0],
         notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
         externalJobId: job.id,
-      });
-    },
-    onSuccess: (data, job) => {
+      }),
+    onSuccess: (_, job) => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
-      
-      // Update local state and localStorage immediately
-      setAppliedJobs(prev => {
-        const newSet = new Set([...prev, job.id]);
-        localStorage.setItem('appliedJobs', JSON.stringify([...newSet]));
-        console.log('✅ Job marked as applied:', job.id);
-        return newSet;
+      setAppliedJobs((prev) => {
+        const set = new Set([...prev, job.id]);
+        localStorage.setItem('appliedJobs', JSON.stringify([...set]));
+        return set;
       });
-      
-      toast.success('Job marked as applied');
+      toast.success('Marked as applied');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to mark job as applied');
-    }
   });
 
+  // Handlers
   const handleSaveJob = (job: JobListing) => {
-    const savedJob = savedJobs.find((saved: SavedJob) => saved.jobListingId === job.id);
-    if (savedJob) {
-      unsaveJobMutation.mutate(savedJob.id);
-    } else {
-      saveJobMutation.mutate({ jobId: job.id });
-    }
-  };
-
-  const isJobSaved = (jobId: string) => {
-    return savedJobs.some((saved: SavedJob) => saved.jobListingId === jobId);
-  };
-
-  const isJobApplied = (jobId: string) => {
-    return appliedJobs.has(jobId);
+    const savedJob = savedJobs.find((s) => s.jobListingId === job.id);
+    savedJob ? unsaveJobMutation.mutate(savedJob.id) : saveJobMutation.mutate({ jobId: job.id });
   };
 
   const handleMarkAsApplied = (job: JobListing) => {
-    if (window.confirm(`Mark "${job.title}" at ${job.company} as applied?`)) {
+    if (window.confirm(`Mark "${job.title}" at ${job.company} as applied?`))
       markAsAppliedMutation.mutate(job);
-    }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setIsSearching(true);
-    
     const skillsArray = watchedValues.skills
-      ? watchedValues.skills.split(',').map(s => s.trim()).filter(s => s)
+      ? watchedValues.skills.split(',').map((s) => s.trim()).filter(Boolean)
       : undefined;
 
     const params: JobSearchParams = {
@@ -330,28 +250,19 @@ export default function JobSearchPage() {
       page: 0,
       size: ITEMS_PER_PAGE,
     };
-    externalSearchMutation.mutate(params);
+    setSearchParams(params);
+    await refetch();
+    setIsSearching(false);
   };
 
-  // FIXED: Page change handler
   const handlePageChange = (newPage: number) => {
-    console.log("🟠 [Pagination] Page change requested:", newPage);
-  
-    if (isClientMode) {
-      const start = newPage * ITEMS_PER_PAGE;
-      const end = start + ITEMS_PER_PAGE;
-      const sliced = jobs.slice(start, end);
-  
-      console.log("🧩 [Client] Showing items", start, "to", end, "of", jobs.length);
-      console.log("🧠 Current visible jobs:", sliced.map((j) => j.title).slice(0, 3), "...");
-      setDisplayedJobs(sliced);
-      setSearchParams((prev) => ({ ...prev, page: newPage }));
-    } else {
-      console.log("🔁 [Server] Fetching new page from backend:", newPage);
-      setSearchParams((prev) => ({ ...prev, page: newPage }));
-    }
-  
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (newPage < 0 || newPage >= totalPages) return;
+    setSearchParams((prev) => ({
+      ...prev,
+      page: newPage,
+      size: ITEMS_PER_PAGE, // ensure size travels with every query
+    }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
 
@@ -364,54 +275,34 @@ export default function JobSearchPage() {
     setValue('skills', '');
   };
 
-  if (!isAuthenticated) {
-    return <div>Loading...</div>;
-  }
+  if (!isAuthenticated) return <div>Loading...</div>;
 
   const visibleJobs = isClientMode ? displayedJobs : jobs;
 
-  console.log(
-    "📈 [Render] Page:",
-    currentPage + 1,
-    "| Mode:",
-    isClientMode ? "Client" : "Server",
-    "| Total elements:",
-    totalElements
-  );
-
-  // FIXED: Page numbers calculation
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
-    
     if (totalPages <= maxVisible) {
-      for (let i = 0; i < totalPages; i++) {
-        pages.push(i);
-      }
+      for (let i = 0; i < totalPages; i++) pages.push(i);
+    } else if (currentPage <= 2) {
+      for (let i = 0; i < maxVisible; i++) pages.push(i);
+    } else if (currentPage >= totalPages - 3) {
+      for (let i = totalPages - maxVisible; i < totalPages; i++) pages.push(i);
     } else {
-      if (currentPage <= 2) {
-        for (let i = 0; i < maxVisible; i++) {
-          pages.push(i);
-        }
-      } else if (currentPage >= totalPages - 3) {
-        for (let i = totalPages - maxVisible; i < totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        for (let i = currentPage - 2; i <= currentPage + 2; i++) {
-          pages.push(i);
-        }
-      }
+      for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
     }
-    
     return pages;
   };
+
+  const isJobSaved = (id: string) => savedJobs.some((s) => s.jobListingId === id);
+  const isJobApplied = (id: string) => appliedJobs.has(id);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {/* --- HEADER AND FILTERS OMITTED FOR BREVITY --- */}
+        {/* Render visibleJobs, pagination and actions as before */}
         {/* Header */}
         <div className="px-4 py-6 sm:px-0">
           <div className="flex items-center justify-between">

@@ -11,11 +11,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.client.RestTemplate;
 import reactor.core.publisher.Mono;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -89,6 +93,24 @@ public class ExternalJobApiService {
         // Default to US
         return "us";
     }
+
+    public void geocodeAndSave(JobListing job) {
+        try {
+            String encoded = URLEncoder.encode(job.getLocation(), StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
+            RestTemplate rest = new RestTemplate();
+            var results = rest.getForObject(url, List.class);
+            if (results != null && !results.isEmpty()) {
+                var obj = (Map<String, Object>) results.get(0);
+                job.setLatitude(Double.parseDouble((String) obj.get("lat")));
+                job.setLongitude(Double.parseDouble((String) obj.get("lon")));
+            }
+        } catch (Exception e) {
+            System.err.println("Geocoding failed for: " + job.getLocation());
+        }
+        jobListingRepository.save(job);
+    }
+
 
     /**
      * Test API connections
