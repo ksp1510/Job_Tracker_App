@@ -15,6 +15,11 @@ public class JobListing {
     private String title;
     private String company;
     private String location;
+
+    private double latitude;
+    private double longitude;
+
+    private boolean remote;
     private String description;
     private String jobType;
     private String experienceLevel;

@@ -12,11 +12,22 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.Metrics;
+import org.springframework.data.geo.Point;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,6 +54,7 @@ public class JobSearchService {
         this.savedJobRepository = savedJobRepository;
         this.externalJobApiService = externalJobApiService;
     }
+    
 
     /**
      * Search jobs with filters and caching
@@ -52,8 +64,8 @@ public class JobSearchService {
                                      int page, int size, String userId) {
 
         // Check cache first
-        SearchCacheEntry cached = searchCache.get(userId);
-        if (cached != null && cached.isValid() && cached.matchesSearch(query, location, jobType)) {
+        SearchCacheEntry cached = searchCache.remove(userId);
+        if (cached != null && cached.isValid() && cached.matchesSearch(query, location, jobType, minSalary, maxSalary, skills)) {
             System.out.println("✅ Returning cached results for user: " + userId + ", page: " + page + ", size: " + size);
             // FIXED: Return correct page from cache
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedDate"));
@@ -81,7 +93,7 @@ public class JobSearchService {
         Page<JobListing> results = performSearch(query, location, pageable);
 
         // Update Cache
-        searchCache.put(userId, new SearchCacheEntry(query, location, jobType, results));
+        searchCache.put(userId, new SearchCacheEntry(query, location, jobType, minSalary, maxSalary, skills, results));
         
         return results;
     }
@@ -90,9 +102,10 @@ public class JobSearchService {
     /**
      * Get cached search results (for when user returns to application)
      */
-    public Optional<Page<JobListing>> getCachedSearch(String userId, int page, int size) {
+    public Optional<Page<JobListing>> getCachedSearch(String userId, int page, int size, String query, String location, String jobType, Double minSalary, Double maxSalary, List<String> skills) {
         SearchCacheEntry cached = searchCache.get(userId);
-        if (cached != null && cached.isValid()) {
+        if (cached != null && cached.isValid()
+                && cached.matchesSearch(query, location, jobType, minSalary, maxSalary, skills)) {
             System.out.println("✅ Returning cached results for user: " + userId);
             return Optional.of(getPageFromCache(cached, page, size));
         }
@@ -185,14 +198,47 @@ public class JobSearchService {
 
     // Private helper methods
     private Page<JobListing> performSearch(String query, String location, Pageable pageable) {
+        if (location != null && !location.isEmpty()) {
+            Point geoPoint = geocodeLocation(location);
+            if (geoPoint != null) {
+                Distance distance = new Distance(25, Metrics.KILOMETERS);
+                List<JobListing> nearby = jobListingRepository.findByLocationNear(geoPoint, distance);
+                return new PageImpl<>(nearby, pageable, nearby.size());
+            }
+        }
+    
         if (query != null && !query.trim().isEmpty()) {
             return jobListingRepository.findByTitleContainingIgnoreCase(query.trim(), pageable);
-        } else if (location != null && !location.trim().isEmpty()) {
-            return jobListingRepository.findByLocationContainingIgnoreCase(location.trim(), pageable);
-        } else {
-            return jobListingRepository.findAll(pageable);
         }
+        return jobListingRepository.findAll(pageable);
     }
+
+    private Point geocodeLocation(String location) {
+        try {
+            String encoded =  URLEncoder.encode(location, StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded + "&format=json&limit=1";
+            RestTemplate rest = new RestTemplate();
+            ResponseEntity<List<Map<String, Object>>> response = rest.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+
+            List<Map<String, Object>> results = response.getBody();
+            if (results != null && !results.isEmpty()) {
+                var obj = (Map<String, Object>) results.get(0);
+                double lat = Double.parseDouble((String) obj.get("lat"));
+                double lon = Double.parseDouble((String) obj.get("lon"));
+                return new Point(lon, lat);
+            }
+        } catch (Exception e) {
+            System.err.println("Geocoding failed for " + location + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+
 
     private Page<JobListing> getPageFromCache(SearchCacheEntry cached, int page, int size) {
         Page<JobListing> allResults = cached.getResults();
@@ -238,13 +284,19 @@ public class JobSearchService {
         private final String query;
         private final String location;
         private final String jobType;
+        private final Double minSalary;
+        private final Double maxSalary;
+        private final List<String> skills;
         private final Page<JobListing> results;
         private final Instant cachedAt;
 
-        public SearchCacheEntry(String query, String location, String jobType, Page<JobListing> results) {
+        public SearchCacheEntry(String query, String location, String jobType, Double minSalary, Double maxSalary, List<String> skills, Page<JobListing> results) {
             this.query = query;
             this.location = location;
             this.jobType = jobType;
+            this.minSalary = minSalary;
+            this.maxSalary = maxSalary;
+            this.skills = skills;
             this.results = results;
             this.cachedAt = Instant.now();
         }
@@ -253,16 +305,32 @@ public class JobSearchService {
             return Instant.now().isBefore(cachedAt.plus(CACHE_VALIDITY_MINUTES, ChronoUnit.MINUTES));
         }
 
-        public boolean matchesSearch(String query, String location, String jobType) {
-            return equals(this.query, query) && 
-                    equals(this.location, location) && 
-                    equals(this.jobType, jobType);
+        public boolean matchesSearch(String query, String location, String jobType,
+                             Double minSalary, Double maxSalary, List<String> skills) {
+            return equals(this.query, query)
+                && equals(this.location, location)
+                && equals(this.jobType, jobType)
+                && equals(this.minSalary, minSalary)
+                && equals(this.maxSalary, maxSalary)
+                && equalsList(this.skills, skills);
         }
 
         private boolean equals(String s1, String s2) {
             if (s1 == null) return s2 == null;
             return s1.equals(s2);
         }
+
+        private boolean equals(Double d1, Double d2) {
+            if (d1 == null) return d2 == null;
+            return d1.equals(d2);
+        }
+
+        private boolean equalsList(List<String> a, List<String> b) {
+            if (a == null && b == null) return true;
+            if (a == null || b == null) return false;
+            return a.containsAll(b) && b.containsAll(a);
+        }
+
 
         public Page<JobListing> getResults() {
             return results;

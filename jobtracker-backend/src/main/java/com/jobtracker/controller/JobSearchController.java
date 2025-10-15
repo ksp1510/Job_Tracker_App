@@ -49,9 +49,16 @@ public class JobSearchController {
     public ResponseEntity<PaginatedJobResponse> getCachedSearch(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String jobType,
+            @RequestParam(required = false) Double minSalary,
+            @RequestParam(required = false) Double maxSalary,
+            @RequestParam(required = false) List<String> skills,
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size);
+        
+        Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size, query, location, jobType, minSalary, maxSalary, skills);
         
         if (cachedResults.isPresent()) {
             Page<JobListing> jobs = cachedResults.get();
@@ -64,7 +71,8 @@ public class JobSearchController {
                 jobs.getTotalElements(),
                 jobs.getTotalPages(),
                 jobs.getNumber(),
-                jobs.getSize()
+                jobs.getSize(),
+                    "client"
             );
             return ResponseEntity.ok(response);
         }
@@ -76,7 +84,7 @@ public class JobSearchController {
      * Search jobs with filters - FIXED: Remove duplicates
      */
     @GetMapping("/search")
-    public ResponseEntity<PaginatedJobResponse> searchJobs(
+    public ResponseEntity<?> searchJobs(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String jobType,
@@ -86,39 +94,40 @@ public class JobSearchController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestHeader("Authorization") String authHeader) {
-        
+
         String userId = extractUserId(authHeader);
         Page<JobListing> jobs = jobSearchService.searchJobs(
                 query, location, jobType, minSalary, maxSalary, skills, page, size, userId);
-        
-        // FIXED: Remove duplicates based on externalId
-        List<JobListing> uniqueJobs = removeDuplicates(jobs.getContent());
-        
-        long totalElements = uniqueJobs.size();
-        
-        final int THRESHOLD = 2000;
-        
-        if (totalElements <= THRESHOLD) {
 
-            ResponseEntity res = ResponseEntity.ok(Map.of(
-                "jobs", uniqueJobs,
-                "totalElements", totalElements,
-                "mode", "client"
-            ));
-            return res;
-            
+        List<JobListing> uniqueJobs = removeDuplicates(jobs.getContent());
+        long totalElements = uniqueJobs.size();
+        final int THRESHOLD = 2000;
+
+        if (totalElements <= THRESHOLD) {
+            // ✅ client mode: small result set
+            PaginatedJobResponse response = new PaginatedJobResponse(
+                    uniqueJobs,
+                    totalElements,
+                    1,        // totalPages
+                    page,
+                    size,
+                    "client"  // added mode field
+            );
+            return ResponseEntity.ok(response);
         } else {
-        // Convert Spring Page to custom DTO
-        PaginatedJobResponse response = new PaginatedJobResponse(
-            uniqueJobs,
-            jobs.getTotalElements(),
-            jobs.getTotalPages(),
-            jobs.getNumber(),
-            jobs.getSize()
-        );
-        return ResponseEntity.ok(response);
+            // ✅ server mode: paged results
+            PaginatedJobResponse response = new PaginatedJobResponse(
+                    uniqueJobs,
+                    jobs.getTotalElements(),
+                    jobs.getTotalPages(),
+                    jobs.getNumber(),
+                    jobs.getSize(),
+                    "server"  // added mode field
+            );
+            return ResponseEntity.ok(response);
         }
     }
+
 
     /**
      * Clear cached search results
@@ -239,5 +248,7 @@ public class JobSearchController {
         private final int totalPages;
         private final int page;
         private final int size;
+        private final String mode;  // NEW FIELD
     }
+
 }
