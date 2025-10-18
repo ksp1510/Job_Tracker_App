@@ -37,7 +37,6 @@ public class AuthController {
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
-        user.setRole(request.role);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // hash password
         return userRepository.save(user);
     }
@@ -46,10 +45,10 @@ public class AuthController {
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         Optional<User> user = userRepository.findByEmail(request.getEmail());
         if (user.isPresent() && passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
-            String token = jwtUtil.generateToken(user.get().getUserId(), user.get().getRole());
+            String token = jwtUtil.generateToken(user.get().getUserId());
             System.out.println("Token: " + token);
             System.out.println("Name: " + user.get().getFirstName() + " " + user.get().getLastName());
-            return new LoginResponse(token, user.get().getRole(), user.get().getFirstName(), user.get().getLastName());
+            return new LoginResponse(token, user.get().getFirstName(), user.get().getLastName());
         }
         throw new RuntimeException("Invalid credentials");
     }
@@ -66,7 +65,6 @@ public class AuthController {
         private String email;
         @NotBlank(message = "Password is required")
         private String password;
-        private String role = "USER"; // e.g., Temp set to USER for easy testing
     }
 
     @Data
@@ -81,7 +79,6 @@ public class AuthController {
     @Data
     static class LoginResponse {
         private final String token;
-        private final String role;
         private final String firstName;
         private final String lastName;
     }

@@ -35,10 +35,9 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [inAppNotifications, setInAppNotifications] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
@@ -47,37 +46,23 @@ export default function SettingsPage() {
   const emailForm = useForm<ChangeEmailForm>();
 
   // Fetch current user preferences
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => apiClient.getCurrentUser(),
+  const { data: preferences } = useQuery({
+    queryKey: ['notification-preferences'],
+    queryFn: () => apiClient.getNotificationPreferences(),
   });
-
-  // Set initial values from user data
+  
   useEffect(() => {
-    if (currentUser) {
-      setNotificationsEnabled(currentUser.notificationEnabled);
-      setEmailNotifications(currentUser.emailNotificationsEnabled);
-      setInAppNotifications(currentUser.inAppNotificationsEnabled);
-    }
-  }, [currentUser]);
+    if (preferences) setEmailNotifications(preferences.emailEnabled);
+  }, [preferences]);
 
   // Save preferences mutation
-  const savePreferencesMutation = useMutation({
-    mutationFn: async () => {
-      return apiClient.updateNotificationPreferences(
-        notificationsEnabled,
-        emailNotifications,
-        inAppNotifications
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      toast.success('Preferences saved successfully');
-    },
-    onError: () => {
-      toast.error('Failed to save preferences');
-    },
+  const updatePref = useMutation({
+    mutationFn: (data: { emailEnabled: boolean }) =>
+      apiClient.updateNotificationPreferences(data),
+    onSuccess: () => toast.success('Email preference updated'),
+    onError: () => toast.error('Failed to update email preference'),
   });
+    
 
   // Change password mutation
   const changePasswordMutation = useMutation({
@@ -124,8 +109,8 @@ export default function SettingsPage() {
     },
   });
 
-  const handleSavePreferences = () => {
-    savePreferencesMutation.mutate();
+  const handleUpdatePreferences = () => {
+    updatePref.mutate({ emailEnabled: emailNotifications });
   };
 
   const handleChangePassword = (data: ChangePasswordForm) => {
@@ -196,28 +181,6 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-gray-200">
               <div className="flex items-center">
-                <BellIcon className="h-5 w-5 text-gray-500 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Enable Notifications</p>
-                  <p className="text-xs text-gray-500">Receive all types of notifications</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notificationsEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between py-3 border-b border-gray-200">
-              <div className="flex items-center">
                 <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Email Notifications</p>
@@ -238,38 +201,15 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
-            
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center">
-                <DevicePhoneMobileIcon className="h-5 w-5 text-gray-500 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">In-App Notifications</p>
-                  <p className="text-xs text-gray-500">Receive notifications in the application</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setInAppNotifications(!inAppNotifications)}
-                disabled={!notificationsEnabled}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  inAppNotifications && notificationsEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    inAppNotifications && notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
           </div>
           
           <div className="mt-6 pt-6 border-t border-gray-200">
             <button
-              onClick={handleSavePreferences}
-              disabled={savePreferencesMutation.isPending}
+              onClick={handleUpdatePreferences}
+              disabled={updatePref.isPending}
               className="w-full sm:w-auto px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {savePreferencesMutation.isPending ? 'Saving...' : 'Save Preferences'}
+              {updatePref.isPending ? 'Saving...' : 'Save Preferences'}
             </button>
           </div>
         </div>

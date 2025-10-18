@@ -283,7 +283,9 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
                     return;
                 }
 
-                System.out.println("🔍 Fetching from SerpAPI: " + query + " in " + location);
+                String safeQuery = query != null && !query.isBlank() ? query.trim() : "Software Engineer";
+                String safeLocation = location != null && !location.isBlank() ? location.trim() : "San Francisco";
+                System.out.println("🔍 Fetching from SerpAPI: " + safeQuery + " in " + safeLocation);
 
                 String countryCode = getCountryCode(location);
                 System.out.println("🌍 Using country code: " + countryCode + " for location: " + location);
@@ -294,8 +296,8 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
                         .host("serpapi.com")
                         .path("/search.json")
                         .queryParam("engine", "google_jobs")
-                        .queryParam("q", query.trim())
-                        .queryParam("location", location)
+                        .queryParam("q", safeQuery)
+                        .queryParam("location", safeLocation)
                         .queryParam("gl", countryCode)  // Country code
                         .queryParam("hl", "en")         // Language
                         .queryParam("api_key", serpApiKey)
