@@ -12,6 +12,8 @@ import com.jobtracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -41,9 +43,12 @@ public class NotificationService {
     public void createFollowUpReminder(Application app) {
         LocalDateTime appliedDateTime = app.getCreatedAt() != null ?
             LocalDateTime.parse(app.getCreatedAt() + "T00:00:00") :
-            LocalDateTime.now();
+            LocalDateTime.now(ZoneOffset.UTC);
         
-        LocalDateTime notifyTime = appliedDateTime.plusDays(7);
+        LocalDateTime notifyTime = appliedDateTime.plusDays(7)
+            .atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
 
         System.out.println("📅 Application created on: " + appliedDateTime);
         System.out.println("🔔 Follow-up reminder will be sent at: " + notifyTime);
@@ -56,7 +61,7 @@ public class NotificationService {
         n.setType(Notification.NotificationType.FOLLOW_UP);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         notificationRepository.save(n);
         System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName());
@@ -70,7 +75,10 @@ public class NotificationService {
 
         Application app = applicationRepository.findById(applicationId).orElse(null);
         
-        LocalDateTime notifyAt = interviewDate.minusDays(1);
+        LocalDateTime notifyAt = interviewDate.minusDays(1)
+            .atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
 
         System.out.println("📅 Interview scheduled for: " + interviewDate);
         System.out.println("🔔 Interview reminder will be sent at: " + notifyAt);
@@ -88,7 +96,7 @@ public class NotificationService {
         n.setType(Notification.NotificationType.INTERVIEW);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         Notification saved = notificationRepository.save(n);
         System.out.println("✅ Interview reminder created (notify 24hrs before): " + saved.getNotifyAt());
@@ -102,7 +110,10 @@ public class NotificationService {
                                                     LocalDateTime assessmentDeadline, String customMessage) {
         Application app = applicationRepository.findById(applicationId).orElse(null);
 
-        LocalDateTime notifyAt = assessmentDeadline.minusDays(1);
+        LocalDateTime notifyAt = assessmentDeadline.minusDays(1)
+            .atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
 
         System.out.println("📅 Assessment deadline scheduled for: " + assessmentDeadline);
         System.out.println("🔔 Assessment reminder will be sent at: " + notifyAt);
@@ -120,7 +131,7 @@ public class NotificationService {
         n.setType(Notification.NotificationType.DEADLINE);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         Notification saved = notificationRepository.save(n);
         System.out.println("✅ Assessment reminder created (notify 24hrs before): " + saved.getNotifyAt());
@@ -132,7 +143,7 @@ public class NotificationService {
      */
     public Notification createNotification(Notification n) {
         if (n.getCreatedAt() == null) {
-            n.setCreatedAt(LocalDateTime.now());
+            n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         }
 
         if (n.isSent() == false) {
@@ -168,7 +179,7 @@ public class NotificationService {
      * ENHANCED: Send emails via AWS SES
      */
     public void processDueNotifications() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         List<Notification> due = notificationRepository
             .findBySentFalseAndNotifyAtBefore(now);
 
