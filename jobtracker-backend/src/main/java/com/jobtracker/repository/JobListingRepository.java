@@ -15,6 +15,9 @@ public interface JobListingRepository extends MongoRepository<JobListing, String
     
     @Query("{ 'isActive': true }")
     Page<JobListing> findActiveJobs(Pageable pageable);
+
+    @Query("{ 'isActive': true, 'title': { : ?0, : 'i' }, 'location': { : ?1, : 'i' } }")
+    Page<JobListing> findByTitleAndLocationContainingIgnoreCase(String title, String location, Pageable pageable);
     
     @Query("{ 'isActive': true, 'title': { : ?0, : 'i' } }")
     Page<JobListing> findByTitleContainingIgnoreCase(String title, Pageable pageable);
@@ -38,4 +41,8 @@ public interface JobListingRepository extends MongoRepository<JobListing, String
 
     @Query("{ 'isActive': true, 'location': { : true }, 'coordinates': { : { : { type: 'Point', coordinates: [?0, ?1] }, : ?2 } } }")
     List<JobListing> findByLocationNear(Point geoPoint, Distance distance);
+
+    @Query("{ 'isActive': true, 'title': { : ?0, : 'i' }, 'location': { : ?1, : 'i' } }")
+    Page<JobListing> findByTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(String trim, String trim2,
+            Pageable pageable);
 }

@@ -64,8 +64,8 @@ public class JobSearchService {
                                      int page, int size, String userId) {
 
         // Check cache first
-        SearchCacheEntry cached = searchCache.remove(userId);
-        if (cached != null && cached.isValid() && cached.matchesSearch(query, location, jobType, minSalary, maxSalary, skills)) {
+        SearchCacheEntry cached = searchCache.get(userId);
+        if (cached != null && cached.isValid() && cached.matchesSearch(query, location)) {
             System.out.println("✅ Returning cached results for user: " + userId + ", page: " + page + ", size: " + size);
             // FIXED: Return correct page from cache
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedDate"));
@@ -80,11 +80,12 @@ public class JobSearchService {
         System.out.println("🔍 Cache miss or expired - fetching fresh data for user: " + userId);
         
         // Save search history
-        saveSearchHistory(userId, query, location, jobType, minSalary, maxSalary, skills);
+        saveSearchHistory(userId, query, location);
         
         // Fetch jobs from external APIs
         try {
-            externalJobApiService.fetchJobsFromAllSources(query, location).get();
+            externalJobApiService.fetchJobsFromAllSources(
+                query, location, jobType, minSalary, maxSalary, skills).get();
         } catch (Exception e) {
             System.err.println("❌ Failed to fetch jobs from external APIs: " + e.getMessage());
         }
@@ -93,7 +94,7 @@ public class JobSearchService {
         Page<JobListing> results = performSearch(query, location, pageable);
 
         // Update Cache
-        searchCache.put(userId, new SearchCacheEntry(query, location, jobType, minSalary, maxSalary, skills, results));
+        searchCache.put(userId, new SearchCacheEntry(query, location, results));
         
         return results;
     }
@@ -102,10 +103,10 @@ public class JobSearchService {
     /**
      * Get cached search results (for when user returns to application)
      */
-    public Optional<Page<JobListing>> getCachedSearch(String userId, int page, int size, String query, String location, String jobType, Double minSalary, Double maxSalary, List<String> skills) {
+    public Optional<Page<JobListing>> getCachedSearch(String userId, int page, int size, String query, String location) {
         SearchCacheEntry cached = searchCache.get(userId);
         if (cached != null && cached.isValid()
-                && cached.matchesSearch(query, location, jobType, minSalary, maxSalary, skills)) {
+                && cached.matchesSearch(query, location)) {
             System.out.println("✅ Returning cached results for user: " + userId);
             return Optional.of(getPageFromCache(cached, page, size));
         }
@@ -177,8 +178,8 @@ public class JobSearchService {
     /**
      * Get search history for user
      */
-    public List<JobSearch> getSearchHistory(String userId) {
-        return jobSearchRepository.findTop10ByUserIdOrderBySearchedAtDesc(userId);
+    public List<JobSearch> getSearchHistory(String userId, String query, String location) {
+        return jobSearchRepository.findByUserIdOrderBySearchedAtDesc(userId, query, location);
     }
 
     /**
@@ -207,9 +208,11 @@ public class JobSearchService {
             }
         }
     
-        if (query != null && !query.trim().isEmpty()) {
-            return jobListingRepository.findByTitleContainingIgnoreCase(query.trim(), pageable);
+        if (query != null && location != null) {
+            return jobListingRepository.findByTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(
+                query.trim(), location.trim(), pageable);
         }
+        
         return jobListingRepository.findAll(pageable);
     }
 
@@ -264,17 +267,12 @@ public class JobSearchService {
     /**
      * Save search history for user
      */
-    private void saveSearchHistory(String userId, String query, String location, 
-                                 String jobType, Double minSalary, Double maxSalary, 
-                                 List<String> skills) {
+    private void saveSearchHistory(String userId, String query, String location) {
         JobSearch search = new JobSearch();
         search.setUserId(userId);
         search.setQuery(query);
         search.setLocation(location);
-        search.setJobType(jobType);
-        search.setMinSalary(minSalary);
-        search.setMaxSalary(maxSalary);
-        search.setSkills(skills);
+        search.setSearchedAt(Instant.now());
         
         jobSearchRepository.save(search);
     }
@@ -283,20 +281,12 @@ public class JobSearchService {
     private static class SearchCacheEntry {
         private final String query;
         private final String location;
-        private final String jobType;
-        private final Double minSalary;
-        private final Double maxSalary;
-        private final List<String> skills;
         private final Page<JobListing> results;
         private final Instant cachedAt;
 
-        public SearchCacheEntry(String query, String location, String jobType, Double minSalary, Double maxSalary, List<String> skills, Page<JobListing> results) {
+        public SearchCacheEntry(String query, String location, Page<JobListing> results) {
             this.query = query;
             this.location = location;
-            this.jobType = jobType;
-            this.minSalary = minSalary;
-            this.maxSalary = maxSalary;
-            this.skills = skills;
             this.results = results;
             this.cachedAt = Instant.now();
         }
@@ -305,32 +295,15 @@ public class JobSearchService {
             return Instant.now().isBefore(cachedAt.plus(CACHE_VALIDITY_MINUTES, ChronoUnit.MINUTES));
         }
 
-        public boolean matchesSearch(String query, String location, String jobType,
-                             Double minSalary, Double maxSalary, List<String> skills) {
+        public boolean matchesSearch(String query, String location) {
             return equals(this.query, query)
-                && equals(this.location, location)
-                && equals(this.jobType, jobType)
-                && equals(this.minSalary, minSalary)
-                && equals(this.maxSalary, maxSalary)
-                && equalsList(this.skills, skills);
+                && equals(this.location, location);
         }
 
         private boolean equals(String s1, String s2) {
             if (s1 == null) return s2 == null;
             return s1.equals(s2);
         }
-
-        private boolean equals(Double d1, Double d2) {
-            if (d1 == null) return d2 == null;
-            return d1.equals(d2);
-        }
-
-        private boolean equalsList(List<String> a, List<String> b) {
-            if (a == null && b == null) return true;
-            if (a == null || b == null) return false;
-            return a.containsAll(b) && b.containsAll(a);
-        }
-
 
         public Page<JobListing> getResults() {
             return results;

@@ -58,7 +58,7 @@ public class JobSearchController {
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
         
-        Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size, query, location, jobType, minSalary, maxSalary, skills);
+        Optional<Page<JobListing>> cachedResults = jobSearchService.getCachedSearch(userId, page, size, query, location);
         
         if (cachedResults.isPresent()) {
             Page<JobListing> jobs = cachedResults.get();
@@ -205,10 +205,12 @@ public class JobSearchController {
      */
     @GetMapping("/search-history")
     public ResponseEntity<List<JobSearch>> getSearchHistory(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String location,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(jobSearchService.getSearchHistory(userId));
+        return ResponseEntity.ok(jobSearchService.getSearchHistory(userId, query, location));
     }
 
     // FIXED: Helper method to remove duplicate jobs

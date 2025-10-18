@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.client.RestTemplate;
-import reactor.core.publisher.Mono;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -101,6 +99,7 @@ public class ExternalJobApiService {
             RestTemplate rest = new RestTemplate();
             var results = rest.getForObject(url, List.class);
             if (results != null && !results.isEmpty()) {
+                @SuppressWarnings("unchecked")
                 var obj = (Map<String, Object>) results.get(0);
                 job.setLatitude(Double.parseDouble((String) obj.get("lat")));
                 job.setLongitude(Double.parseDouble((String) obj.get("lon")));
@@ -202,19 +201,23 @@ public class ExternalJobApiService {
     /**
      * Fetch jobs from all external APIs
      */
-    public CompletableFuture<Void> fetchJobsFromAllSources(String query, String location) {
+    public CompletableFuture<Void> fetchJobsFromAllSources(
+        String query, String location, String jobType,
+        Double minSalary, Double maxSalary, List<String> skills) {
         System.out.println("🔍 Starting job fetch from all sources: " + query + " in " + location);
         
         return CompletableFuture.allOf(
-                fetchFromJSearchAPI(query, location),
-                fetchFromSerpAPI(query, location)
+                fetchFromJSearchAPI(query, location, jobType, minSalary, maxSalary, skills),
+                fetchFromSerpAPI(query, location, jobType, minSalary, maxSalary, skills)
         );
     }
 
     /**
  * Fetch from JSearch (RapidAPI) - FIXED: Better location handling
  */
-private CompletableFuture<Void> fetchFromJSearchAPI(String query, String location) {
+private CompletableFuture<Void> fetchFromJSearchAPI(
+    String query, String location, String jobType,
+    Double minSalary, Double maxSalary, List<String> skills) {
     return CompletableFuture.runAsync(() -> {            
         try {
             if (rapidApiKey.isEmpty()) {
@@ -229,33 +232,17 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
                 ? query + " in " + location 
                 : query;
 
-            Mono<String> response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .scheme("https")
-                            .host("jsearch.p.rapidapi.com")
-                            .path("/search")
-                            .queryParam("query", searchQuery)
-                            .queryParam("page", "1")
-                            .queryParam("num_pages", "2")
-                            .build())
-                    .header("X-RapidAPI-Key", rapidApiKey)
-                    .header("X-RapidAPI-Host", "jsearch.p.rapidapi.com")
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError(),
-                        clientResponse -> clientResponse.bodyToMono(String.class)
-                                .flatMap(errorBody -> {
-                                    System.err.println("❌ JSearch API 4xx error: " + errorBody);
-                                    return Mono.error(new RuntimeException("JSearch API 4xx error: " + errorBody));
-                                }))
-                    .onStatus(status -> status.is5xxServerError(),
-                        clientResponse -> clientResponse.bodyToMono(String.class)
-                                .flatMap(errorBody -> {
-                                    System.err.println("❌ JSearch API 5xx error: " + errorBody);
-                                    return Mono.error(new RuntimeException("JSearch API 5xx error: " + errorBody));
-                                }))
-                    .bodyToMono(String.class);
+                StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search");
 
-            String responseBody = response.block();
+                if (!searchQuery.isEmpty()) url.append("?query=").append(URLEncoder.encode(searchQuery, StandardCharsets.UTF_8));
+                if (!location.isEmpty()) url.append("&location=").append(URLEncoder.encode(location, StandardCharsets.UTF_8));
+                
+
+            String responseBody = webClient.get()
+                    .uri(url.toString())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
             if (responseBody != null) {
                 List<JobListing> jobs = parseJSearchResponse(responseBody);
                 if (!jobs.isEmpty()) {
@@ -275,7 +262,9 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
     /**
      * Fetch from SerpAPI Google Jobs - FIXED: Added country code support
      */
-    private CompletableFuture<Void> fetchFromSerpAPI(String query, String location) {
+    private CompletableFuture<Void> fetchFromSerpAPI(
+        String query, String location, String jobType,
+        Double minSalary, Double maxSalary, List<String> skills) {
         return CompletableFuture.runAsync(() -> {
             try {
                 if (serpApiKey.isEmpty()) {
@@ -283,42 +272,23 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
                     return;
                 }
 
-                String safeQuery = query != null && !query.isBlank() ? query.trim() : "Software Engineer";
-                String safeLocation = location != null && !location.isBlank() ? location.trim() : "San Francisco";
+                String safeQuery = query != null && !query.isBlank() ? query.trim() : "";
+                String safeLocation = location != null && !location.isBlank() ? location.trim() : "";
                 System.out.println("🔍 Fetching from SerpAPI: " + safeQuery + " in " + safeLocation);
 
                 String countryCode = getCountryCode(location);
                 System.out.println("🌍 Using country code: " + countryCode + " for location: " + location);
 
-                Mono<String> response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host("serpapi.com")
-                        .path("/search.json")
-                        .queryParam("engine", "google_jobs")
-                        .queryParam("q", safeQuery)
-                        .queryParam("location", safeLocation)
-                        .queryParam("gl", countryCode)  // Country code
-                        .queryParam("hl", "en")         // Language
-                        .queryParam("api_key", serpApiKey)
-                        .queryParam("num", "10")
-                        .build())
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError(),
-                        clientResponse -> clientResponse.bodyToMono(String.class)
-                                .flatMap(errorBody -> {
-                                    System.err.println("❌ SerpAPI error: " + errorBody);
-                                    return Mono.error(new RuntimeException("SerpAPI error: " + errorBody));
-                                }))
-                    .onStatus(status -> status.is5xxServerError(),
-                        clientResponse -> clientResponse.bodyToMono(String.class)
-                                .flatMap(errorBody -> {
-                                    System.err.println("❌ SerpAPI error: " + errorBody);
-                                    return Mono.error(new RuntimeException("SerpAPI error: " + errorBody));
-                                }))
-                    .bodyToMono(String.class);
+                StringBuilder url = new StringBuilder("https://serpapi.com/search.json?engine=google_jobs");
 
-                String responseBody = response.block();
+                if (!safeQuery.isEmpty()) url.append("&q=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
+                if (!safeLocation.isEmpty()) url.append("&location=").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
+
+                String responseBody = webClient.get()
+                        .uri(url.toString())
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
                 if (responseBody != null) {
                     List<JobListing> jobs = parseSerpAPIResponse(responseBody);
                     if (!jobs.isEmpty()) {
@@ -416,8 +386,10 @@ private CompletableFuture<Void> fetchFromJSearchAPI(String query, String locatio
     /**
      * Manual job fetch trigger
      */
-    public CompletableFuture<String> fetchJobsManually(String query, String location) {
-        return fetchJobsFromAllSources(query, location)
+    public CompletableFuture<String> fetchJobsManually(
+        String query, String location, String jobType,
+        Double minSalary, Double maxSalary, List<String> skills) {
+        return fetchJobsFromAllSources(query, location, jobType, minSalary, maxSalary, skills)
                 .thenApply(v -> {
                     String result = "Job fetch completed for: " + query + " in " + location;
                     System.out.println("✅ " + result);
