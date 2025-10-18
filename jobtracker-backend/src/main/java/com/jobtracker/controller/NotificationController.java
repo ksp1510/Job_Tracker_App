@@ -3,7 +3,9 @@ package com.jobtracker.controller;
 import com.jobtracker.config.JwtUtil;
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Notification;
+import com.jobtracker.model.NotificationPreference;
 import com.jobtracker.model.User;
+import com.jobtracker.repository.NotificationPreferenceRepository;
 import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.repository.UserRepository;
 import com.jobtracker.service.ApplicationService;
@@ -21,6 +23,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.time.Duration;
 
 @RestController
@@ -29,6 +32,7 @@ public class NotificationController {
 
     private final NotificationService service;
     private final NotificationRepository repository;
+    private final NotificationPreferenceRepository prefRepo;
     private final ApplicationService applicationService;
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
@@ -37,11 +41,13 @@ public class NotificationController {
                                 NotificationRepository repository,
                                 ApplicationService applicationService,
                                 JwtUtil jwtUtil,
+                                NotificationPreferenceRepository prefRepo,
                                 UserRepository userRepository) {
         this.service = service;
         this.repository = repository;
         this.applicationService = applicationService;
         this.jwtUtil = jwtUtil;
+        this.prefRepo = prefRepo;
         this.userRepository = userRepository;
     }
 
@@ -55,15 +61,6 @@ public class NotificationController {
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
         
-        // Check if in-app notifications are enabled
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        if (!user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
-            System.out.println("⚠️ In-app notifications disabled for user: " + userId);
-            return ResponseEntity.ok(List.of()); // Return empty list
-        }
-        
         return ResponseEntity.ok(service.getUserNotifications(userId));
     }
 
@@ -74,15 +71,6 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getUnreadNotifications(
             @RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        
-        // Check if in-app notifications are enabled
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        if (!user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
-            System.out.println("⚠️ In-app notifications disabled for user: " + userId);
-            return ResponseEntity.ok(List.of()); // Return empty list
-        }
         
         // FIXED: Only return notifications that are due (notifyAt is in the past)
         LocalDateTime now = LocalDateTime.now();
@@ -174,12 +162,6 @@ public class NotificationController {
             "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
         notification.setNotifyAt(notifyAt); // 24 hours before
         notification.setType(Notification.NotificationType.INTERVIEW);
-        if (user.isEmailNotificationsEnabled()) {
-            notification.setChannels(List.of(Notification.Channel.EMAIL));
-        }
-        if (user.isInAppNotificationsEnabled()) {
-            notification.setChannels(List.of(Notification.Channel.IN_APP));
-        }
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
         notification.setSent(false);
@@ -227,12 +209,6 @@ public class NotificationController {
             "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
         notification.setNotifyAt(notifyAt); // 24 hours before
         notification.setType(Notification.NotificationType.DEADLINE);
-        if (user.isEmailNotificationsEnabled()) {
-            notification.setChannels(List.of(Notification.Channel.EMAIL));
-        }
-        if (user.isInAppNotificationsEnabled()) {
-            notification.setChannels(List.of(Notification.Channel.IN_APP));
-        }
         notification.setCreatedAt(LocalDateTime.now());
         notification.setRead(false);
         notification.setSent(false);
@@ -264,12 +240,6 @@ public class NotificationController {
         n.setMessage(request.getMessage());
         n.setNotifyAt(request.getNotifyAt()); // User-specified time
         n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.CUSTOM);
-        if (user.isEmailNotificationsEnabled()) {
-            n.setChannels(List.of(Notification.Channel.EMAIL));
-        }
-        if (user.isInAppNotificationsEnabled()) {
-            n.setChannels(List.of(Notification.Channel.IN_APP));
-        }
         n.setCreatedAt(LocalDateTime.now());
         n.setRead(false);
         n.setSent(false);
@@ -283,24 +253,29 @@ public class NotificationController {
 
     // ================ NOTIFICATION PREFERENCES ================
 
-    /**
-     * Update user notification preferences
-     */
-    @PutMapping("/preferences")
-    public ResponseEntity<User> updateNotificationPreferences(
-            @Valid @RequestBody NotificationPreferencesRequest request,
-            @RequestHeader("Authorization") String authHeader) {
-        
+    @GetMapping("/preferences")
+    public ResponseEntity<NotificationPreference> getPreferences(@RequestHeader("Authorization") String authHeader) {
         String userId = extractUserId(authHeader);
-        User user = service.updateNotificationPreferences(
-                userId, 
-                request.isNotificationsEnabled(), 
-                request.isEmailEnabled(), 
-                request.isInAppEnabled()
-        );
-        
-        return ResponseEntity.ok(user);
+        NotificationPreference pref = prefRepo.findByUserId(userId)
+            .orElseGet(() -> prefRepo.save(new NotificationPreference(userId, true, true, LocalDateTime.now())));
+        return ResponseEntity.ok(pref);
     }
+
+    @PutMapping("/preferences")
+    public ResponseEntity<NotificationPreference> updatePreferences(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, Boolean> req) {
+        String userId = extractUserId(authHeader);
+        NotificationPreference pref = prefRepo.findByUserId(userId)
+            .orElseGet(() -> new NotificationPreference());
+        pref.setUserId(userId);
+        pref.setEmailEnabled(req.getOrDefault("emailEnabled", true));
+        pref.setInAppEnabled(true);  // enforce
+        pref.setUpdatedAt(LocalDateTime.now());
+        prefRepo.save(pref);
+        return ResponseEntity.ok(pref);
+    }
+
 
     // ================ REAL-TIME NOTIFICATIONS ================
 
@@ -317,8 +292,9 @@ public class NotificationController {
                 .map(seq -> {
                     // Check user preferences
                     User user = userRepository.findById(userId).orElse(null);
+                    NotificationPreference pref = prefRepo.findByUserId(userId).orElse(null);
                     
-                    if (user == null || !user.isNotificationEnabled() || !user.isInAppNotificationsEnabled()) {
+                    if (user == null || !pref.isInAppEnabled()) {
                         return ServerSentEvent.<List<Notification>>builder()
                                 .id(String.valueOf(seq))
                                 .event("notification-update")
@@ -384,7 +360,6 @@ public class NotificationController {
         private LocalDateTime notifyAt;
         
         private Notification.NotificationType type;
-        private Notification.Channel channel;
     }
 
     @Data

@@ -39,14 +39,5 @@ public class User {
     @NotBlank(message = "Password is required")
     private String passwordHash;
 
-    @NotBlank(message = "Role is required")
-    private String role; // admin | user
     private final Instant createdAt = Instant.now();
-
-    @Builder.Default
-    private boolean notificationEnabled = true;
-    @Builder.Default
-    private boolean emailNotificationsEnabled = true;
-    @Builder.Default
-    private boolean inAppNotificationsEnabled = true;
 }

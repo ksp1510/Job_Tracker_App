@@ -2,10 +2,12 @@ package com.jobtracker.service;
 
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Notification;
+import com.jobtracker.model.NotificationPreference;
 import com.jobtracker.model.Status;
 import com.jobtracker.model.User;
 import com.jobtracker.repository.ApplicationRepository;
 import com.jobtracker.repository.NotificationRepository;
+import com.jobtracker.repository.NotificationPreferenceRepository;
 import com.jobtracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -18,15 +20,18 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
     private final SesService sesService;
 
     public NotificationService(NotificationRepository notificationRepository, 
                              UserRepository userRepository,
                              ApplicationRepository applicationRepository,
+                             NotificationPreferenceRepository notificationPreferenceRepository,
                              SesService sesService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
+        this.notificationPreferenceRepository = notificationPreferenceRepository;
         this.sesService = sesService;
     }
 
@@ -34,10 +39,6 @@ public class NotificationService {
      * Create follow-up reminder when application is created with APPLIED status
      */
     public void createFollowUpReminder(Application app) {
-        User user = getUserIfNotificationsEnabled(app.getUserId());
-        if (user == null) return;
-
-        // FIXED: Calculate notification time (7 days from now)
         LocalDateTime appliedDateTime = app.getCreatedAt() != null ?
             LocalDateTime.parse(app.getCreatedAt() + "T00:00:00") :
             LocalDateTime.now();
@@ -53,8 +54,6 @@ public class NotificationService {
         n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
         n.setNotifyAt(notifyTime);
         n.setType(Notification.NotificationType.FOLLOW_UP);
-        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -68,11 +67,6 @@ public class NotificationService {
      */
     public Notification createInterviewReminder(String userId, String applicationId,
                                           LocalDateTime interviewDate, String customMessage) {
-        User user = getUserIfNotificationsEnabled(userId);
-        if (user == null) {
-            System.out.println("Notifications are disabled for this user");
-            throw new RuntimeException("Notifications are disabled for this user");
-        }
 
         Application app = applicationRepository.findById(applicationId).orElse(null);
         
@@ -92,8 +86,6 @@ public class NotificationService {
         n.setMessage(message);
         n.setNotifyAt(notifyAt);
         n.setType(Notification.NotificationType.INTERVIEW);
-        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -108,12 +100,6 @@ public class NotificationService {
      */
     public Notification createAssessmentDeadlineReminder(String userId, String applicationId,
                                                     LocalDateTime assessmentDeadline, String customMessage) {
-        User user = getUserIfNotificationsEnabled(userId);
-        if (user == null) {
-            System.out.println("⚠️ User notifications disabled or user not found for: " + userId);
-            throw new RuntimeException("Notifications are disabled for this user");
-        }
-
         Application app = applicationRepository.findById(applicationId).orElse(null);
 
         LocalDateTime notifyAt = assessmentDeadline.minusDays(1);
@@ -132,8 +118,6 @@ public class NotificationService {
         n.setMessage(message);
         n.setNotifyAt(notifyAt);
         n.setType(Notification.NotificationType.DEADLINE);
-        n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
-                    Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now());
@@ -147,12 +131,6 @@ public class NotificationService {
      * Generic notification creation
      */
     public Notification createNotification(Notification n) {
-        User user = getUserIfNotificationsEnabled(n.getUserId());
-        if (user == null) {
-            System.out.println("⚠️ User notifications disabled or user not found for: " + n.getUserId());
-            throw new RuntimeException("Notifications are disabled for this user");
-        }
-
         if (n.getCreatedAt() == null) {
             n.setCreatedAt(LocalDateTime.now());
         }
@@ -167,11 +145,6 @@ public class NotificationService {
 
         if (n.getType() == null) {
             n.setType(Notification.NotificationType.CUSTOM);
-        }
-
-        if (n.getChannels() == null) {
-            n.setChannels(List.of(user.isEmailNotificationsEnabled() ? 
-                        Notification.Channel.EMAIL : Notification.Channel.IN_APP));
         }
 
         System.out.println("📅 Generic notification scheduled for: " + n.getNotifyAt());
@@ -226,8 +199,18 @@ public class NotificationService {
                     continue;
                 }
 
-                if (!user.isNotificationEnabled()) {
+                /*if (!user.isNotificationEnabled()) {
                     System.out.println("⚠️ User notifications disabled for notification ID: " + n.getId());
+                    n.setSent(true);
+                    notificationRepository.save(n);
+                    continue;
+                }*/
+
+                NotificationPreference pref = notificationPreferenceRepository.findByUserId(user.getUserId())
+                        .orElse(new NotificationPreference(user.getUserId(), true, true, LocalDateTime.now()));
+
+                if (!pref.isInAppEnabled() && !pref.isEmailEnabled()) {
+                    System.out.println("⚠️ All notifications disabled for user: " + user.getEmail());
                     n.setSent(true);
                     notificationRepository.save(n);
                     continue;
@@ -250,9 +233,9 @@ public class NotificationService {
                     applicationRepository.findById(n.getApplicationId()).orElse(null) : null;
                 
                 boolean emailSent = false;
-                
-                // Send notification based on channel
-                if (n.getChannels().contains(Notification.Channel.EMAIL) && user.isEmailNotificationsEnabled()) {
+
+                // ✅ Apply user’s persistent preferences
+                if (pref.isEmailEnabled()) {
                     System.out.println("📧 Sending email notification to " + user.getEmail() + ": " + n.getMessage());
                     try {
                         sendEmailNotification(user, n, app);
@@ -265,15 +248,15 @@ public class NotificationService {
                     }
                 } else {
                     System.out.println("⚠️ Email notifications disabled for user: " + user.getEmail());
-                    emailSent = true;
+                    emailSent = true; // mark as handled even if not sent
                 }
                 
-                // Always create in-app notification (if user has in-app enabled)
-                if (user.isInAppNotificationsEnabled()) {
-                    System.out.println("📱 In-app notification enabled for " + user.getEmail());
-                } else {
-                    System.out.println("⚠️ In-app notifications disabled for user: " + user.getEmail());
+                // ✅ Always keep in-app notifications on
+                if (pref.isInAppEnabled()) {
+                    saveInAppNotification(user, n, app);
+                    System.out.println("📱 In-app notification saved for " + user.getEmail());
                 }
+                    
     
                 // Mark as sent
                 if (emailSent) {
@@ -298,6 +281,28 @@ public class NotificationService {
         System.out.println("🔔 ========================================\n");
     }
 
+    private void saveInAppNotification(User user, Notification notification, Application app) {
+        try {
+            // Clone or adapt the existing notification for in-app display
+            Notification inApp = new Notification();
+            inApp.setUserId(user.getUserId());
+            inApp.setApplicationId(notification.getApplicationId());
+            inApp.setMessage(notification.getMessage());
+            inApp.setType(notification.getType());
+            inApp.setNotifyAt(notification.getNotifyAt());
+            inApp.setCreatedAt(LocalDateTime.now());
+            inApp.setSent(true); // mark delivered immediately for in-app
+    
+            notificationRepository.save(inApp);
+    
+            System.out.println("💾 In-app notification persisted for user: " + user.getEmail());
+        } catch (Exception e) {
+            System.err.println("❌ Failed to save in-app notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    
     /**
      * Update user notification preferences
      */
@@ -311,9 +316,6 @@ public class NotificationService {
         System.out.println("   Email enabled: " + emailEnabled);
         System.out.println("   In-app enabled: " + inAppEnabled);
         
-        user.setNotificationEnabled(notificationsEnabled);
-        user.setEmailNotificationsEnabled(emailEnabled);
-        user.setInAppNotificationsEnabled(inAppEnabled);
         
         User updatedUser = userRepository.save(user);
         System.out.println("✅ Notification preferences updated for user: " + user.getEmail());
@@ -334,13 +336,6 @@ public class NotificationService {
         
         notificationRepository.deleteById(notificationId);
         System.out.println("🗑️ Notification deleted: " + notificationId);
-    }
-
-
-    // Helper methods
-    private User getUserIfNotificationsEnabled(String userId) {
-        User user = userRepository.findById(userId).orElse(null);
-        return (user != null && user.isNotificationEnabled()) ? user : null;
     }
 
     /**

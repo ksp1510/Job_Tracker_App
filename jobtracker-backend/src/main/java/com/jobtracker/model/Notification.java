@@ -6,7 +6,6 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Document(collection = "notifications")
@@ -28,15 +27,9 @@ public class Notification {
 
     @Indexed
     private boolean read = false;    // mark after reading
-    private List<Channel> channels = List.of(Channel.EMAIL, Channel.IN_APP);
-
+    
     @Indexed
     private NotificationType type; // default type
-
-    public enum Channel {
-        IN_APP,
-        EMAIL
-    }
 
     public enum NotificationType {
         FOLLOW_UP,

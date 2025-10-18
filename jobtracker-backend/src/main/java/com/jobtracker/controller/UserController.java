@@ -37,33 +37,9 @@ public class UserController {
                 user.getUserId(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getEmail(),
-                user.getRole(),
-                user.isNotificationEnabled(),
-                user.isEmailNotificationsEnabled(),
-                user.isInAppNotificationsEnabled()
+                user.getEmail()
             )
         );
-    }
-
-    @PutMapping("/notification-preferences")
-    public ResponseEntity<User> updateNotificationPreferences(
-            @Valid @RequestBody NotificationPreferencesRequest request,
-            @RequestHeader("Authorization") String authorization) {
-        
-        String token = authorization.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
-
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        // Update notification preferences
-        user.setNotificationEnabled(request.isNotificationsEnabled());
-        user.setEmailNotificationsEnabled(request.isEmailEnabled());
-        user.setInAppNotificationsEnabled(request.isInAppEnabled());     
-        User updatedUser = userRepository.save(user);
-        
-        return ResponseEntity.ok(updatedUser);
     }
 
     @PostMapping("/change-password")
@@ -145,10 +121,6 @@ public class UserController {
         private String firstName;
         private String lastName;
         private String email;
-        private String role;
-        private boolean notificationEnabled;
-        private boolean emailNotificationsEnabled;
-        private boolean inAppNotificationsEnabled;
     }
 
     @Data
