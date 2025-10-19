@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class ExternalJobApiService {
@@ -213,51 +214,65 @@ public class ExternalJobApiService {
     }
 
     /**
- * Fetch from JSearch (RapidAPI) - FIXED: Better location handling
- */
-private CompletableFuture<Void> fetchFromJSearchAPI(
-    String query, String location, String jobType,
-    Double minSalary, Double maxSalary, List<String> skills) {
-    return CompletableFuture.runAsync(() -> {            
-        try {
-            if (rapidApiKey.isEmpty()) {
-                System.out.println("⚠️ RapidAPI key not configured for JSearch");
-                return;
-            }
+     * Fetch from JSearch (RapidAPI) - FIXED: Better location handling
+     */
+    private CompletableFuture<Void> fetchFromJSearchAPI(
+        String query, String location, String jobType,
+        Double minSalary, Double maxSalary, List<String> skills) {
 
-            System.out.println("🔍 Fetching from JSearch API: " + query + " in " + location);
-
-            // Build search query with location - make it final
-            final String searchQuery = (location != null && !location.isEmpty()) 
-                ? query + " in " + location 
-                : query;
-
-                StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search");
-
-                if (!searchQuery.isEmpty()) url.append("?query=").append(URLEncoder.encode(searchQuery, StandardCharsets.UTF_8));
-                if (!location.isEmpty()) url.append("&location=").append(URLEncoder.encode(location, StandardCharsets.UTF_8));
-                
-
-            String responseBody = webClient.get()
-                    .uri(url.toString())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            if (responseBody != null) {
-                List<JobListing> jobs = parseJSearchResponse(responseBody);
-                if (!jobs.isEmpty()) {
-                    jobListingRepository.saveAll(jobs);
-                    System.out.println("✅ Saved " + jobs.size() + " jobs from JSearch");
-                } else {
-                    System.out.println("❌ No jobs found from JSearch");
+        return CompletableFuture.runAsync(() -> {            
+            try {
+                if (rapidApiKey == null || rapidApiKey.isBlank()) {
+                    System.out.println("⚠️ RapidAPI key not configured for JSearch");
+                    return;
                 }
-            }
 
-        } catch (Exception e) {
-            System.err.println("❌ JSearch API error: " + e.getMessage());
-        }
-    });
-}
+                String safeQuery = (query != null && !query.isBlank()) ? query : "";
+                String safeLocation = (location != null && !location.isBlank()) ? location : "";
+
+                System.out.println("🔍 Fetching from JSearch API: " + safeQuery + " in " + safeLocation);
+
+                StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search?");
+
+                if (!safeQuery.isEmpty()) url.append("query=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
+                if (!safeLocation.isEmpty()) url.append("+in+").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
+                if (jobType != null && !jobType.isBlank()) url.append("&employment_type=").append(jobType.toLowerCase());
+                if (minSalary != null) url.append("&min_salary=").append(minSalary.intValue());
+                if (maxSalary != null) url.append("&max_salary=").append(maxSalary.intValue());
+                if (skills != null && !skills.isEmpty()) {
+                    String skillsParam = skills.stream()
+                            .map(s -> s.trim().replace(" ", "+"))
+                            .collect(Collectors.joining(","));
+                    url.append("&skills=").append(URLEncoder.encode(skillsParam, StandardCharsets.UTF_8));
+                }                
+                url.append("&page=1&num_pages=1");
+
+                System.out.println("🌍 Calling JSearch API URL → " + url);
+                
+                String responseBody = webClient.get()
+                        .uri(url.toString())
+                        .header("X-RapidAPI-Key", rapidApiKey)
+                        .header("X-RapidAPI-Host", "jsearch.p.rapidapi.com")
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+
+                if (responseBody != null) {
+                    List<JobListing> jobs = parseJSearchResponse(responseBody);
+                    if (!jobs.isEmpty()) {
+                        jobListingRepository.saveAll(jobs);
+                        System.out.println("✅ Saved " + jobs.size() + " jobs from JSearch");
+                    } else {
+                        System.out.println("❌ No jobs found from JSearch");
+                    }
+                }
+
+            } catch (Exception e) {
+                System.err.println("❌ JSearch API error: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
 
     /**
      * Fetch from SerpAPI Google Jobs - FIXED: Added country code support
@@ -276,19 +291,30 @@ private CompletableFuture<Void> fetchFromJSearchAPI(
                 String safeLocation = location != null && !location.isBlank() ? location.trim() : "";
                 System.out.println("🔍 Fetching from SerpAPI: " + safeQuery + " in " + safeLocation);
 
-                String countryCode = getCountryCode(location);
-                System.out.println("🌍 Using country code: " + countryCode + " for location: " + location);
-
                 StringBuilder url = new StringBuilder("https://serpapi.com/search.json?engine=google_jobs");
 
                 if (!safeQuery.isEmpty()) url.append("&q=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
                 if (!safeLocation.isEmpty()) url.append("&location=").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
+                url.append("&api_key=").append(serpApiKey);
+
+                if (jobType != null && !jobType.isBlank()) url.append("&employment_type=").append(jobType.toLowerCase());
+                if (minSalary != null) url.append("&min_salary=").append(minSalary.intValue());
+                if (maxSalary != null) url.append("&max_salary=").append(maxSalary.intValue());
+                if (skills != null && !skills.isEmpty()) {
+                    String skillsParam = skills.stream()
+                            .map(s -> s.trim().replace(" ", "+"))
+                            .collect(Collectors.joining(","));
+                    url.append("&skills=").append(URLEncoder.encode(skillsParam, StandardCharsets.UTF_8));
+                }
+
+                System.out.println("🌍 Calling SerpAPI URL → " + url);
 
                 String responseBody = webClient.get()
                         .uri(url.toString())
                         .retrieve()
                         .bodyToMono(String.class)
                         .block();
+                        
                 if (responseBody != null) {
                     List<JobListing> jobs = parseSerpAPIResponse(responseBody);
                     if (!jobs.isEmpty()) {
