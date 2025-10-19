@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface JobSearchRepository extends MongoRepository<JobSearch, String> {
 
-    List<JobSearch> findByUserIdOrderBySearchedAtDesc(String userId, String query, String location);
+    List<JobSearch> findByUserIdOrderBySearchedAtDesc(String userId);
     
     List<JobSearch> findTop10ByUserIdOrderBySearchedAtDesc(String userId);
 }

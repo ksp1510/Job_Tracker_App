@@ -24,6 +24,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.time.Duration;
@@ -156,8 +157,9 @@ public class NotificationController {
             .toLocalDateTime();
         LocalDateTime notifyAtUTC = interviewDateTimeUTC.minusDays(1); // 24 hours before
         
-        System.out.println("📅 Interview scheduled for: " + interviewDateTime);
-        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm a");
+        System.out.println("📅 Interview scheduled for: " + interviewDateTimeUTC.format(fmt));
+        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC.format(fmt));
         
         // Create notification with correct notifyAt time
         Notification notification = new Notification();
@@ -206,8 +208,9 @@ public class NotificationController {
             .toLocalDateTime();
         LocalDateTime notifyAtUTC = deadlineDateTimeUTC.minusDays(1); // 24 hours before
         
-        System.out.println("📅 Assessment deadline: " + deadlineDateTime);
-        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm a");
+        System.out.println("📅 Assessment deadline: " + deadlineDateTimeUTC.format(fmt));
+        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC.format(fmt));
         
         // Create notification with correct notifyAt time
         Notification notification = new Notification();

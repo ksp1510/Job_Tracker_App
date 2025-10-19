@@ -12,6 +12,7 @@ import com.jobtracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -168,12 +169,12 @@ public class NotificationService {
      * ENHANCED: Send emails via AWS SES
      */
     public void processDueNotifications() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime nowUTC = LocalDateTime.now(ZoneId.of("UTC"));
         List<Notification> due = notificationRepository
-            .findBySentFalseAndNotifyAtBefore(now);
+            .findBySentFalseAndNotifyAtBefore(nowUTC);
 
         System.out.println("🔔 ========================================");
-        System.out.println("🔔 Processing notifications at: " + now);
+        System.out.println("🔔 Processing notifications at: " + nowUTC);
         System.out.println("🔔 Found " + due.size() + " due notifications");
         System.out.println("🔔 ========================================");
     
@@ -183,10 +184,10 @@ public class NotificationService {
                 System.out.println("\n📬 Processing notification ID: " + n.getId());
                 System.out.println("   Type: " + n.getType());
                 System.out.println("   Scheduled for: " + n.getNotifyAt());
-                System.out.println("   Current time: " + now);
+                System.out.println("   Current time: " + nowUTC);
 
                 // Skip if notification time is in the future
-                if (n.getNotifyAt().isAfter(now)) {
+                if (n.getNotifyAt().isAfter(nowUTC)) {
                     System.out.println("⏭️ Skipping notification: notifyAt is in the future: " + n.getNotifyAt());
                     continue;
                 }
