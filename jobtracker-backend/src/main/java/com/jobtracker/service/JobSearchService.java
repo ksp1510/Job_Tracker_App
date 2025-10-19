@@ -93,6 +93,8 @@ public class JobSearchService {
         Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "postedDate"));
         Page<JobListing> results = performSearch(query, location, pageable);
 
+
+
         // Update Cache
         searchCache.put(userId, new SearchCacheEntry(query, location, results));
         
@@ -178,8 +180,8 @@ public class JobSearchService {
     /**
      * Get search history for user
      */
-    public List<JobSearch> getSearchHistory(String userId, String query, String location) {
-        return jobSearchRepository.findByUserIdOrderBySearchedAtDesc(userId, query, location);
+    public List<JobSearch> getSearchHistory(String userId) {
+        return jobSearchRepository.findByUserIdOrderBySearchedAtDesc(userId);
     }
 
     /**

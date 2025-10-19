@@ -38,7 +38,7 @@ const JOB_TYPES = [
   { value: 'REMOTE', label: 'Remote' },
 ];
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 12;
 
 export default function JobSearchPage() {
   const { isAuthenticated } = useAuth();

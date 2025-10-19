@@ -232,18 +232,13 @@ public class ExternalJobApiService {
 
                 System.out.println("🔍 Fetching from JSearch API: " + safeQuery + " in " + safeLocation);
 
-                StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search?");
+                StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search?query=");
 
-                if (!safeQuery.isEmpty()) url.append("query=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
-                if (!safeLocation.isEmpty()) url.append("+in+").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
-                if (jobType != null && !jobType.isBlank()) url.append("&employment_type=").append(jobType.toLowerCase());
+                if (!safeQuery.isBlank()) url.append(URLEncoder.encode(safeQuery + " " + jobType + " in " + safeLocation, StandardCharsets.UTF_8));
                 if (minSalary != null) url.append("&min_salary=").append(minSalary.intValue());
                 if (maxSalary != null) url.append("&max_salary=").append(maxSalary.intValue());
                 if (skills != null && !skills.isEmpty()) {
-                    String skillsParam = skills.stream()
-                            .map(s -> s.trim().replace(" ", "+"))
-                            .collect(Collectors.joining(","));
-                    url.append("&skills=").append(URLEncoder.encode(skillsParam, StandardCharsets.UTF_8));
+                    url.append("&skills=").append(URLEncoder.encode(String.join(",", skills), StandardCharsets.UTF_8));
                 }                
                 url.append("&page=1&num_pages=1");
 
@@ -293,11 +288,11 @@ public class ExternalJobApiService {
 
                 StringBuilder url = new StringBuilder("https://serpapi.com/search.json?engine=google_jobs");
 
-                if (!safeQuery.isEmpty()) url.append("&q=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
-                if (!safeLocation.isEmpty()) url.append("&location=").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
+                if (!safeQuery.isBlank()) url.append("&q=").append(URLEncoder.encode(safeQuery, StandardCharsets.UTF_8));
+                if (!safeLocation.isBlank()) url.append("&location=").append(URLEncoder.encode(safeLocation, StandardCharsets.UTF_8));
                 url.append("&api_key=").append(serpApiKey);
 
-                if (jobType != null && !jobType.isBlank()) url.append("&employment_type=").append(jobType.toLowerCase());
+                if (jobType != null && !jobType.isBlank()) url.append("&employment_type=").append(URLEncoder.encode(jobType.toLowerCase(), StandardCharsets.UTF_8));
                 if (minSalary != null) url.append("&min_salary=").append(minSalary.intValue());
                 if (maxSalary != null) url.append("&max_salary=").append(maxSalary.intValue());
                 if (skills != null && !skills.isEmpty()) {
