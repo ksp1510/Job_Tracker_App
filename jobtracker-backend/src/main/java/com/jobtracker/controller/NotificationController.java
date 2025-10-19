@@ -22,6 +22,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.time.Duration;
@@ -148,10 +150,14 @@ public class NotificationController {
         
         // FIXED: Calculate notification time (24 hours before interview)
         LocalDateTime interviewDateTime = request.getInterviewDate();
-        LocalDateTime notifyAt = interviewDateTime.minusDays(1); // 24 hours before
+        LocalDateTime interviewDateTimeUTC = interviewDateTime
+            .atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
+        LocalDateTime notifyAtUTC = interviewDateTimeUTC.minusDays(1); // 24 hours before
         
         System.out.println("📅 Interview scheduled for: " + interviewDateTime);
-        System.out.println("🔔 Reminder will be sent at: " + notifyAt);
+        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC);
         
         // Create notification with correct notifyAt time
         Notification notification = new Notification();
@@ -160,9 +166,9 @@ public class NotificationController {
         notification.setMessage(request.getCustomMessage() != null ? 
             request.getCustomMessage() : 
             "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAt); // 24 hours before
+        notification.setNotifyAt(notifyAtUTC); // 24 hours before
         notification.setType(Notification.NotificationType.INTERVIEW);
-        notification.setCreatedAt(LocalDateTime.now());
+        notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setRead(false);
         notification.setSent(false);
         
@@ -195,10 +201,13 @@ public class NotificationController {
         
         // FIXED: Calculate notification time (24 hours before deadline)
         LocalDateTime deadlineDateTime = request.getAssessmentDeadline();
-        LocalDateTime notifyAt = deadlineDateTime.minusDays(1); // 24 hours before
+        LocalDateTime deadlineDateTimeUTC = deadlineDateTime.atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
+        LocalDateTime notifyAtUTC = deadlineDateTimeUTC.minusDays(1); // 24 hours before
         
         System.out.println("📅 Assessment deadline: " + deadlineDateTime);
-        System.out.println("🔔 Reminder will be sent at: " + notifyAt);
+        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC);
         
         // Create notification with correct notifyAt time
         Notification notification = new Notification();
@@ -207,9 +216,9 @@ public class NotificationController {
         notification.setMessage(request.getCustomMessage() != null ? 
             request.getCustomMessage() : 
             "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAt); // 24 hours before
+        notification.setNotifyAt(notifyAtUTC); // 24 hours before
         notification.setType(Notification.NotificationType.DEADLINE);
-        notification.setCreatedAt(LocalDateTime.now());
+        notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setRead(false);
         notification.setSent(false);
         
