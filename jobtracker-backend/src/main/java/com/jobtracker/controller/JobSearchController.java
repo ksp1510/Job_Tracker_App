@@ -205,12 +205,10 @@ public class JobSearchController {
      */
     @GetMapping("/search-history")
     public ResponseEntity<List<JobSearch>> getSearchHistory(
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false) String location,
             @RequestHeader("Authorization") String authHeader) {
         
         String userId = extractUserId(authHeader);
-        return ResponseEntity.ok(jobSearchService.getSearchHistory(userId, query, location));
+        return ResponseEntity.ok(jobSearchService.getSearchHistory(userId));
     }
 
     // FIXED: Helper method to remove duplicate jobs
