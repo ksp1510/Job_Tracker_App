@@ -233,13 +233,32 @@ public class ExternalJobApiService {
                 System.out.println("🔍 Fetching from JSearch API: " + safeQuery + " in " + safeLocation);
 
                 StringBuilder url = new StringBuilder("https://jsearch.p.rapidapi.com/search?query=");
-
-                if (!safeQuery.isBlank()) url.append(URLEncoder.encode(safeQuery + " " + jobType + " in " + safeLocation, StandardCharsets.UTF_8));
-                if (minSalary != null) url.append("&min_salary=").append(minSalary.intValue());
-                if (maxSalary != null) url.append("&max_salary=").append(maxSalary.intValue());
+                StringBuilder searchTerm = new StringBuilder();
+                if (safeQuery != null && !safeQuery.isBlank()) searchTerm.append(safeQuery);
+                if (jobType != null && !jobType.isBlank()) {
+                    if (searchTerm.length() > 0) searchTerm.append(" ");
+                    searchTerm.append(jobType);
+                }
+                if (safeLocation != null && !safeLocation.isBlank()) {
+                    if (searchTerm.length() > 0) searchTerm.append(" in ");
+                    searchTerm.append(safeLocation);
+                }
+                if (searchTerm.length() > 0) {
+                    url.append(URLEncoder.encode(searchTerm.toString(), StandardCharsets.UTF_8));
+                }
+                if (minSalary != null) {
+                    if (searchTerm.length() > 0) searchTerm.append(" ");
+                    searchTerm.append("min_salary");
+                }
+                if (maxSalary != null) {
+                    if (searchTerm.length() > 0) searchTerm.append(" ");
+                    searchTerm.append("max_salary");
+                }
                 if (skills != null && !skills.isEmpty()) {
-                    url.append("&skills=").append(URLEncoder.encode(String.join(",", skills), StandardCharsets.UTF_8));
-                }                
+                    if (searchTerm.length() > 0) searchTerm.append(" ");
+                    searchTerm.append("skills");
+                } 
+                               
                 url.append("&page=1&num_pages=1");
 
                 System.out.println("🌍 Calling JSearch API URL → " + url);

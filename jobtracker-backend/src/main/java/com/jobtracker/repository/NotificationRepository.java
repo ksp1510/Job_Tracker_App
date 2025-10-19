@@ -21,8 +21,6 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findByUserIdAndReadFalse(String userId);
     
     // Find notifications that should be sent now
-    List<Notification> findByNotifyAtBeforeAndReadFalseAndSentFalse(LocalDateTime dateTime);
-    
     List<Notification> findBySentFalseAndNotifyAtBefore(LocalDateTime dateTime);
     
     // Check if follow-up reminder already exists

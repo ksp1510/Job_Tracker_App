@@ -68,6 +68,7 @@ public class Application {
         this.jobDescription = jobDescription;
         this.status = status;
         this.appliedDate = LocalDate.now();
+        
     }
 }
 
