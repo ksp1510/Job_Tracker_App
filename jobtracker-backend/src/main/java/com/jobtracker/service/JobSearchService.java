@@ -69,12 +69,9 @@ public class JobSearchService {
             System.out.println("✅ Returning cached results for user: " + userId + ", page: " + page + ", size: " + size);
             // FIXED: Return correct page from cache
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedDate"));
-            List<JobListing> allJobs = cached.getResults().getContent();
-            int start = Math.min(page * size, allJobs.size());
-            int end = Math.min(start + size, allJobs.size());
-            List<JobListing> pageContent = allJobs.subList(start, end);
-
-            return new PageImpl<>(pageContent, pageable, allJobs.size());
+            Page<JobListing> results = performSearch(query, location, pageable);
+            searchCache.put(userId, new SearchCacheEntry(query, location, results));
+            return results;
         }
 
         System.out.println("🔍 Cache miss or expired - fetching fresh data for user: " + userId);
@@ -201,21 +198,30 @@ public class JobSearchService {
 
     // Private helper methods
     private Page<JobListing> performSearch(String query, String location, Pageable pageable) {
-        if (location != null && !location.isEmpty()) {
+        boolean hasQuery = query != null && !query.isBlank();
+        boolean hasLocation = location != null && !location.isBlank();
+
+        if (hasQuery && hasLocation) {
+            return jobListingRepository.findByIsActiveTrueAndTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(
+                query.trim(), location.trim(), pageable);
+        }
+    
+        if (hasQuery) {
+            return jobListingRepository.findByIsActiveTrueAndTitleContainingIgnoreCase(
+                query.trim(), pageable);
+        }
+        
+        if (hasLocation) {
             Point geoPoint = geocodeLocation(location);
             if (geoPoint != null) {
                 Distance distance = new Distance(25, Metrics.KILOMETERS);
-                List<JobListing> nearby = jobListingRepository.findByLocationNear(geoPoint, distance);
+                List<JobListing> nearby = jobListingRepository.findByIsActiveTrueAndLocationNear(geoPoint, distance);
                 return new PageImpl<>(nearby, pageable, nearby.size());
             }
-        }
-    
-        if (query != null && location != null) {
-            return jobListingRepository.findByTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(
-                query.trim(), location.trim(), pageable);
+            return jobListingRepository.findByIsActiveTrueAndLocationContainingIgnoreCase(location.trim(), pageable);
         }
         
-        return jobListingRepository.findAll(pageable);
+        return jobListingRepository.findByIsActiveTrue(pageable);
     }
 
     private Point geocodeLocation(String location) {

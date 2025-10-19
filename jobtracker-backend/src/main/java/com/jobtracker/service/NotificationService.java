@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -40,24 +42,32 @@ public class NotificationService {
      * Create follow-up reminder when application is created with APPLIED status
      */
     public void createFollowUpReminder(Application app) {
-        LocalDateTime appliedDateTime = app.getCreatedAt() != null ?
-            LocalDateTime.parse(app.getCreatedAt() + "T00:00:00") :
-            LocalDateTime.now();
+        LocalDateTime appliedLocal; 
+        if (app.getCreatedAt() instanceof LocalDateTime createdAt) {
+            appliedLocal = createdAt;
+        } else {
+            String createdAtStr = String.valueOf(app.getCreatedAt());
+            appliedLocal = LocalDateTime.parse(createdAtStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
         
-        LocalDateTime notifyTime = appliedDateTime.plusDays(7);
+        LocalDateTime notifyLocal = appliedLocal.plusDays(7);
 
-        System.out.println("📅 Application created on: " + appliedDateTime);
-        System.out.println("🔔 Follow-up reminder will be sent at: " + notifyTime);
+        LocalDateTime notifyAtUTC = notifyLocal.atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
+
+        System.out.println("📅 Application created on: " + appliedLocal);
+        System.out.println("🔔 Follow-up reminder will be sent at: " + notifyAtUTC);
        
         Notification n = new Notification();
         n.setUserId(app.getUserId());
         n.setApplicationId(app.getId());
         n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
-        n.setNotifyAt(notifyTime);
+        n.setNotifyAt(notifyAtUTC);
         n.setType(Notification.NotificationType.FOLLOW_UP);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         notificationRepository.save(n);
         System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName());
@@ -71,10 +81,14 @@ public class NotificationService {
 
         Application app = applicationRepository.findById(applicationId).orElse(null);
         
-        LocalDateTime notifyAt = interviewDate.minusDays(1);
+        LocalDateTime interviewUTC = interviewDate.atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
+        
+        LocalDateTime notifyAtUTC = interviewUTC.minusDays(1);
 
         System.out.println("📅 Interview scheduled for: " + interviewDate);
-        System.out.println("🔔 Interview reminder will be sent at: " + notifyAt);
+        System.out.println("🔔 Interview reminder will be sent at: " + notifyAtUTC);
         
         String message = customMessage != null ? customMessage : 
             String.format("Reminder: Interview tomorrow for %s at %s! Good luck!", 
@@ -85,11 +99,11 @@ public class NotificationService {
         n.setUserId(userId);
         n.setApplicationId(applicationId);
         n.setMessage(message);
-        n.setNotifyAt(notifyAt);
+        n.setNotifyAt(notifyAtUTC);
         n.setType(Notification.NotificationType.INTERVIEW);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         Notification saved = notificationRepository.save(n);
         System.out.println("✅ Interview reminder created (notify 24hrs before): " + saved.getNotifyAt());
@@ -103,10 +117,14 @@ public class NotificationService {
                                                     LocalDateTime assessmentDeadline, String customMessage) {
         Application app = applicationRepository.findById(applicationId).orElse(null);
 
-        LocalDateTime notifyAt = assessmentDeadline.minusDays(1);
+        LocalDateTime assessmentUTC = assessmentDeadline.atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(ZoneOffset.UTC)
+            .toLocalDateTime();
+        
+        LocalDateTime notifyAtUTC = assessmentUTC.minusDays(1);
 
         System.out.println("📅 Assessment deadline scheduled for: " + assessmentDeadline);
-        System.out.println("🔔 Assessment reminder will be sent at: " + notifyAt);
+        System.out.println("🔔 Assessment reminder will be sent at: " + notifyAtUTC);
         
         String message = customMessage != null ? customMessage : 
             String.format("Reminder: Assessment deadline tomorrow for %s at %s!", 
@@ -117,11 +135,11 @@ public class NotificationService {
         n.setUserId(userId);
         n.setApplicationId(applicationId);
         n.setMessage(message);
-        n.setNotifyAt(notifyAt);
+        n.setNotifyAt(notifyAtUTC);
         n.setType(Notification.NotificationType.DEADLINE);
         n.setSent(false);
         n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
 
         Notification saved = notificationRepository.save(n);
         System.out.println("✅ Assessment reminder created (notify 24hrs before): " + saved.getNotifyAt());
@@ -133,7 +151,7 @@ public class NotificationService {
      */
     public Notification createNotification(Notification n) {
         if (n.getCreatedAt() == null) {
-            n.setCreatedAt(LocalDateTime.now());
+            n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         }
 
         if (n.isSent() == false) {
@@ -365,6 +383,9 @@ public class NotificationService {
      * Build HTML email with application details
      */
     private String buildEmailHtml(User user, Notification notification, Application app) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm a").withZone(ZoneId.systemDefault());
+        String formattedTime = formatter.format(notification.getNotifyAt().atZone(ZoneOffset.UTC));
+        
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>");
         html.append("<html><head><style>");
@@ -400,7 +421,7 @@ public class NotificationService {
         // Message
         html.append("<div class='message-box'>");
         html.append("<p><strong>").append(notification.getMessage()).append("</strong></p>");
-        html.append("<p style='color: #666;'>Scheduled for: ").append(notification.getNotifyAt()).append("</p>");
+        html.append("<p style='color: #666;'>Scheduled for: ").append(formattedTime).append("</p>");
         html.append("</div>");
         
         // Action button

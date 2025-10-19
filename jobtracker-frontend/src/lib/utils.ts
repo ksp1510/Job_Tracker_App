@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/lib/utils.ts
 import { type ClassValue, clsx } from 'clsx';
+import { format } from 'date-fns';
 
 export function classNames(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
@@ -12,22 +13,22 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(date: string | Date): string {
   const d = new Date(date);
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return format(d, 'yyyy-MM-dd');
 }
 
 export function formatDateTime(date: string | Date): string {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const d = typeof date === 'string' ? new Date(date + 'Z') : new Date(date);
+  // Convert to local time and format as DD-MM-YYYY hh:mm A
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hourStr = hours.toString().padStart(2, '0');
+  return `${day}-${month}-${year} ${hourStr}:${minutes} ${ampm}`;
 }
 
 export function formatSalary(salary: number): string {
