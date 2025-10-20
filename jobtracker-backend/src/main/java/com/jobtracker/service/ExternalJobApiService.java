@@ -208,8 +208,8 @@ public class ExternalJobApiService {
         System.out.println("🔍 Starting job fetch from all sources: " + query + " in " + location);
         
         return CompletableFuture.allOf(
-                fetchFromJSearchAPI(query, location, jobType, minSalary, maxSalary, skills),
-                fetchFromSerpAPI(query, location, jobType, minSalary, maxSalary, skills)
+                fetchFromJSearchAPI(query, location, jobType, minSalary, maxSalary, skills)
+                //fetchFromSerpAPI(query, location, jobType, minSalary, maxSalary, skills)
         );
     }
 

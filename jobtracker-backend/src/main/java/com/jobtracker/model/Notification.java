@@ -18,6 +18,8 @@ public class Notification {
     private String userId;           // owner of the notification
     private String applicationId;    // optional link to application
     private String message;          // "Follow up on Google interview"
+
+    private LocalDateTime eventDate;
     
     @Indexed
     private LocalDateTime notifyAt;  // when to trigger

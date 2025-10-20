@@ -30,6 +30,23 @@ interface ReminderForm {
   message: string;
 }
 
+function formatUtcToLocal(utcString: string) {
+  try {
+    const date = new Date(utcString + 'Z');
+    return date.toLocaleString('en-CA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return utcString;
+  }
+}
+
 // Notification Detail Modal Component
 const NotificationDetailModal = ({ 
   notification, 
@@ -109,7 +126,7 @@ const NotificationDetailModal = ({
             </label>
             <div className="flex items-center space-x-2 text-gray-900">
               <CalendarIcon className="h-5 w-5 text-gray-500" />
-              <span>{formatDateTime(notification.notifyAt)}</span>
+              <span>{formatUtcToLocal(notification.eventDate)}</span>
             </div>
           </div>
 
@@ -176,6 +193,9 @@ export default function NotificationsPage() {
       });
     },
   });
+
+  
+
 
   // Sort unread as well (though backend should already do this)
   /**
@@ -248,7 +268,7 @@ export default function NotificationsPage() {
   });
 
   const createCustomNotificationMutation = useMutation({
-    mutationFn: (data: { applicationId?: string; message: string; notifyAt: string }) =>
+    mutationFn: (data: { applicationId?: string; message: string; eventDate: string }) =>
       apiClient.createCustomNotification(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -284,7 +304,7 @@ export default function NotificationsPage() {
         createCustomNotificationMutation.mutate({
           applicationId: data.applicationId || undefined,
           message: data.message,
-          notifyAt: dateTime,
+          eventDate: dateTime,
         });
         break;
     }
@@ -435,7 +455,7 @@ export default function NotificationsPage() {
                           {/* Time and Type */}
                           <div className="flex items-center space-x-3 mt-2">
                             <p className="text-xs text-gray-500">
-                              {formatDateTime(notification.notifyAt)}
+                              {formatUtcToLocal(notification.eventDate)}
                             </p>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                               {notification.type.toLowerCase()}

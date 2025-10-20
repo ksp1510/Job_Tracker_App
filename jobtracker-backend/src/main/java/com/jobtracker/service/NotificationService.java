@@ -9,6 +9,8 @@ import com.jobtracker.repository.ApplicationRepository;
 import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.repository.NotificationPreferenceRepository;
 import com.jobtracker.repository.UserRepository;
+
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -182,12 +184,18 @@ public class NotificationService {
         return notificationRepository.findByUserIdOrderByNotifyAtDesc(userId);
     }
 
+    public List<Notification> getUpcomingNotifications(String userId) {
+        LocalDateTime nowUtc = LocalDateTime.now(ZoneOffset.UTC);
+        return notificationRepository.findByUserIdAndNotifyAtAfterOrderByNotifyAtAsc(userId, nowUtc);
+    }
+
     /**
      * Process due notifications - CHECK STATUS BEFORE SENDING FOLLOW-UP
      * ENHANCED: Send emails via AWS SES
      */
+    @Scheduled(fixedRate = 60000)
     public void processDueNotifications() {
-        LocalDateTime nowUTC = LocalDateTime.now(ZoneId.of("UTC"));
+        LocalDateTime nowUTC = LocalDateTime.now(ZoneOffset.UTC);
         List<Notification> due = notificationRepository
             .findBySentFalseAndNotifyAtBefore(nowUTC);
 
@@ -195,7 +203,9 @@ public class NotificationService {
         System.out.println("🔔 Processing notifications at: " + nowUTC);
         System.out.println("🔔 Found " + due.size() + " due notifications");
         System.out.println("🔔 ========================================");
-    
+
+        
+        
         for (Notification n : due) {
             try {
 
@@ -226,7 +236,7 @@ public class NotificationService {
                 }*/
 
                 NotificationPreference pref = notificationPreferenceRepository.findByUserId(user.getUserId())
-                        .orElse(new NotificationPreference(user.getUserId(), true, true, LocalDateTime.now()));
+                        .orElse(new NotificationPreference(user.getUserId(), true, true, LocalDateTime.now(ZoneOffset.UTC)));
 
                 if (!pref.isInAppEnabled() && !pref.isEmailEnabled()) {
                     System.out.println("⚠️ All notifications disabled for user: " + user.getEmail());
@@ -251,34 +261,43 @@ public class NotificationService {
                 Application app = n.getApplicationId() != null ? 
                     applicationRepository.findById(n.getApplicationId()).orElse(null) : null;
                 
-                boolean emailSent = false;
+                boolean handled = false;
 
                 // ✅ Apply user’s persistent preferences
                 if (pref.isEmailEnabled()) {
-                    System.out.println("📧 Sending email notification to " + user.getEmail() + ": " + n.getMessage());
-                    try {
-                        sendEmailNotification(user, n, app);
-                        emailSent = true;
-                        System.out.println("✅ Email notification sent successfully to " + user.getEmail());
-                    } catch (Exception emailError) {
-                        System.err.println("❌ Failed to send email: " + emailError.getMessage());
-                        emailError.printStackTrace();
-                        continue;
-                    }
-                } else {
-                    System.out.println("⚠️ Email notifications disabled for user: " + user.getEmail());
-                    emailSent = true; // mark as handled even if not sent
+                try {
+                    // Format message using UTC→local time conversion
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a");
+                    String localTime = n.getNotifyAt()
+                            .atZone(ZoneOffset.UTC)
+                            .withZoneSameInstant(ZoneId.systemDefault())
+                            .format(fmt);
+
+                    String html = "<p>" + n.getMessage() + "</p>"
+                            + "<p><b>Scheduled for:</b> " + localTime + "</p>";
+
+                    sesService.sendHtmlEmail(user.getEmail(),
+                            "📅 Reminder – Upcoming " + n.getType().name().toLowerCase(),
+                            html);
+                    handled = true;
+                    System.out.println("✅ Email sent to " + user.getEmail());
+                } catch (Exception e) {
+                    System.err.println("❌ Failed to send email: " + e.getMessage());
+                    e.printStackTrace();
+                    continue;
                 }
+            }
                 
                 // ✅ Always keep in-app notifications on
                 if (pref.isInAppEnabled()) {
                     saveInAppNotification(user, n, app);
+                    handled = true;
                     System.out.println("📱 In-app notification saved for " + user.getEmail());
                 }
                     
     
                 // Mark as sent
-                if (emailSent) {
+                if (handled) {
                     n.setSent(true);
                     notificationRepository.save(n);
                     System.out.println("✅ Notification marked as sent: " + n.getId());

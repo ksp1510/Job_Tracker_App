@@ -24,9 +24,11 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.time.Duration;
 
 @RestController
@@ -136,101 +138,97 @@ public class NotificationController {
     public ResponseEntity<Notification> createInterviewReminder(
             @Valid @RequestBody InterviewReminderRequest request,
             @RequestHeader("Authorization") String authHeader) {
-        
+
         String userId = extractUserId(authHeader);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // Verify user owns the application
+
         Application app = applicationService.getApplication(request.getApplicationId(), userId)
-            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-        
-        // Update application with interview date
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
         app.setInterviewDate(request.getInterviewDate());
         applicationService.updateApplication(app.getId(), userId, app);
-        
-        // FIXED: Calculate notification time (24 hours before interview)
-        LocalDateTime interviewDateTime = request.getInterviewDate();
-        LocalDateTime interviewDateTimeUTC = interviewDateTime
-            .atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(ZoneOffset.UTC)
-            .toLocalDateTime();
-        LocalDateTime notifyAtUTC = interviewDateTimeUTC.minusDays(1); // 24 hours before
-        
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm a");
-        System.out.println("📅 Interview scheduled for: " + interviewDateTimeUTC.format(fmt));
-        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC.format(fmt));
-        
-        // Create notification with correct notifyAt time
+
+        ZonedDateTime interviewLocal = request.getInterviewDate().atZone(ZoneId.systemDefault());
+        ZonedDateTime interviewUtc = interviewLocal.withZoneSameInstant(ZoneOffset.UTC);
+        LocalDateTime notifyAt = interviewUtc.minusDays(1).toLocalDateTime();
+
+        // Avoid duplicates
+        Optional<Notification> existing = repository.findByApplicationIdAndType(
+                app.getId(), Notification.NotificationType.INTERVIEW);
+        if (existing.isPresent()) {
+            Notification n = existing.get();
+            n.setNotifyAt(notifyAt);
+            n.setMessage("Reminder updated for interview at " + app.getCompanyName());
+            repository.save(n);
+            return ResponseEntity.ok(n);
+        }
+
         Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setApplicationId(request.getApplicationId());
-        notification.setMessage(request.getCustomMessage() != null ? 
-            request.getCustomMessage() : 
-            "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAtUTC); // 24 hours before
+        notification.setMessage(request.getCustomMessage() != null ?
+                request.getCustomMessage() :
+                "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
+        notification.setNotifyAt(notifyAt);
+        notification.setEventDate(request.getInterviewDate());
         notification.setType(Notification.NotificationType.INTERVIEW);
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setRead(false);
         notification.setSent(false);
-        
+
         Notification saved = repository.save(notification);
-        
-        System.out.println("✅ Interview reminder created - will notify at: " + saved.getNotifyAt());
-        
+        System.out.println("✅ Interview reminder created - will notify at (UTC): " + saved.getNotifyAt());
         return ResponseEntity.ok(saved);
     }
 
-    /**
-     * Create assessment deadline reminder - FIXED: Set notifyAt to 24 hours before deadline
-     */
     @PostMapping("/deadline-reminder")
     public ResponseEntity<Notification> createDeadlineReminder(
             @Valid @RequestBody DeadlineReminderRequest request,
             @RequestHeader("Authorization") String authHeader) {
-        
+
         String userId = extractUserId(authHeader);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // Verify user owns the application
+
         Application app = applicationService.getApplication(request.getApplicationId(), userId)
-            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-        
-        // Update application with assessment deadline
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
         app.setAssessmentDeadline(request.getAssessmentDeadline());
         applicationService.updateApplication(app.getId(), userId, app);
-        
-        // FIXED: Calculate notification time (24 hours before deadline)
-        LocalDateTime deadlineDateTime = request.getAssessmentDeadline();
-        LocalDateTime deadlineDateTimeUTC = deadlineDateTime.atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(ZoneOffset.UTC)
-            .toLocalDateTime();
-        LocalDateTime notifyAtUTC = deadlineDateTimeUTC.minusDays(1); // 24 hours before
-        
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm a");
-        System.out.println("📅 Assessment deadline: " + deadlineDateTimeUTC.format(fmt));
-        System.out.println("🔔 Reminder will be sent at: " + notifyAtUTC.format(fmt));
-        
-        // Create notification with correct notifyAt time
+
+        ZonedDateTime deadlineLocal = request.getAssessmentDeadline().atZone(ZoneId.systemDefault());
+        ZonedDateTime deadlineUtc = deadlineLocal.withZoneSameInstant(ZoneOffset.UTC);
+        LocalDateTime notifyAt = deadlineUtc.minusDays(1).toLocalDateTime();
+
+        Optional<Notification> existing = repository.findByApplicationIdAndType(
+                app.getId(), Notification.NotificationType.DEADLINE);
+        if (existing.isPresent()) {
+            Notification n = existing.get();
+            n.setNotifyAt(notifyAt);
+            n.setMessage("Reminder updated for assessment deadline at " + app.getCompanyName());
+            repository.save(n);
+            return ResponseEntity.ok(n);
+        }
+
         Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setApplicationId(request.getApplicationId());
-        notification.setMessage(request.getCustomMessage() != null ? 
-            request.getCustomMessage() : 
-            "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAtUTC); // 24 hours before
+        notification.setMessage(request.getCustomMessage() != null ?
+                request.getCustomMessage() :
+                "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
+        notification.setNotifyAt(notifyAt);
+        notification.setEventDate(request.getAssessmentDeadline());
         notification.setType(Notification.NotificationType.DEADLINE);
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setRead(false);
         notification.setSent(false);
-        
+
         Notification saved = repository.save(notification);
-        
-        System.out.println("✅ Deadline reminder created - will notify at: " + saved.getNotifyAt());
-        
+        System.out.println("✅ Deadline reminder created - will notify at (UTC): " + saved.getNotifyAt());
         return ResponseEntity.ok(saved);
     }
+
 
     /**
      * Create custom notification - User sets their own notifyAt time

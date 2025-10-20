@@ -81,6 +81,7 @@ export interface Notification {
     userId: string;
     applicationId?: string;
     message: string;
+    eventDate: string;
     notifyAt: string;
     type: NotificationType;
     channel: NotificationChannel;
