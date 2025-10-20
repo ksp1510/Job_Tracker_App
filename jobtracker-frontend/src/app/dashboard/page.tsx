@@ -24,6 +24,23 @@ import {
   BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 
+function formatUtcToLocal(utcString: string) {
+  try {
+    const date = new Date(utcString + 'Z');
+    return date.toLocaleString('en-CA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return utcString;
+  }
+}
+
 // Interview Detail Modal Component
 const InterviewDetailModal = ({ 
   application, 
@@ -579,7 +596,7 @@ export default function DashboardPage() {
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {formatDate(notification.notifyAt)}
+                            {formatDate(notification.eventDate)}
                           </p>
                         </div>
                       </div>

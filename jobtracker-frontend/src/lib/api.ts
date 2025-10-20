@@ -277,7 +277,7 @@ class ApiClient {
   async createCustomNotification(data: {
     applicationId?: string;
     message: string;
-    notifyAt: string;
+    eventDate: string;
     type?: string;
     channel?: string;
   }): Promise<Notification> {

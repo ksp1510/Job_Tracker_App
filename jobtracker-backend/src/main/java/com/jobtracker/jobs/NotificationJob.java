@@ -14,6 +14,7 @@ public class NotificationJob {
     }
 
     // Run every 1 minute
+    /*
     @Scheduled(fixedRate = 60000)
     public void processNotifications() {
         try {
@@ -23,5 +24,5 @@ public class NotificationJob {
             System.err.println("❌ Notification job failed: " + e.getMessage());
             e.printStackTrace();
         }
-    }
+    }*/
 }

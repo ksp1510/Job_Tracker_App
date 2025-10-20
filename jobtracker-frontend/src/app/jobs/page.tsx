@@ -10,7 +10,7 @@ import { apiClient } from '@/lib/api';
 import { JobListing, JobSearchParams, SavedJob } from '@/lib/types';
 import { useForm } from 'react-hook-form';
 import { formatSalary, timeAgo } from '@/lib/utils';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import debounce from 'lodash.debounce';
 import {
   MagnifyingGlassIcon,
@@ -67,8 +67,8 @@ export default function JobSearchPage() {
   }, []);
 
   /** Fetch jobs */
-  const { data: jobsResponse, isLoading, error, isFetching, refetch } = useQuery({
-    queryKey: ['jobs', JSON.stringify(searchParams)],
+  const { data: jobsResponse, isLoading, error, isFetching } = useQuery({
+    queryKey: ['jobs', searchParams],
     queryFn: async () => {
       const hasCached = await apiClient.checkCacheStatus();
       if (hasCached) {
@@ -79,6 +79,7 @@ export default function JobSearchPage() {
     },
     enabled: isAuthenticated,
   });
+
 
   /** Interpret backend data */
   const isClientMode = Array.isArray((jobsResponse as any)?.jobs);
@@ -179,13 +180,14 @@ export default function JobSearchPage() {
   };
 
   const debouncedSearch = useCallback(
-    debounce(async (params: JobSearchParams) => {
+    debounce((params: JobSearchParams) => {
+      console.log("🧩 Updating searchParams:", params);
       setSearchParams(params);
-      await refetch();
       setIsSearching(false);
     }, 500),
-    [refetch]
+    []
   );
+
 
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
@@ -245,7 +247,6 @@ export default function JobSearchPage() {
   const clearFilters = () => {
     ['query', 'location', 'jobType', 'minSalary', 'maxSalary', 'skills'].forEach((f) => setValue(f as any, ''));
     setSearchParams({ page: 0, size: ITEMS_PER_PAGE });
-    refetch();
     toast.success('Filters cleared');
   };
 
@@ -620,17 +621,33 @@ export default function JobSearchPage() {
                       )}
 
                       <div className="mt-4 flex flex-col gap-2">
-                        {job.applyUrl && (
+                        {job.applyUrl ? (
                           <a
                             href={job.applyUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
                           >
-                            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                            <ArrowTopRightOnSquareIcon className="-ml-1 mr-2 h-5 w-5" />
                             Apply on Company Site
                           </a>
-                        )}
+                        ) : (
+                          <><button
+                              className="btn-disabled cursor-not-allowed text-gray-600"
+                              disabled
+                              title="No direct application link available"
+                            >
+                              ❌ No Apply Link Available
+                            </button><a
+                              href={`https://www.google.com/search?q=${encodeURIComponent(job.company || '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                              title="Search for this job on Google"
+                            >
+                                🔍 Search Company
+                              </a></>
+                      )}
 
                         <button
                           onClick={() => handleMarkAsApplied(job)}
