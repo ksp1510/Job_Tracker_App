@@ -53,8 +53,11 @@ app:
       key: ${SERPAPI_KEY:}
     rapidapi:
       key: ${RAPIDAPI_KEY:}
-    
-  
+
+  # CORS Configuration
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200}
+
   jobs:
     seed:
       enabled: ${JOB_SEED_ENABLED:true}

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uvicorn
 import logging
+import os
 from contextlib import asynccontextmanager
 
 # Import our modules
@@ -68,10 +69,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# SECURITY FIX: Configure CORS from environment variable
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+
 app.add_middleware(
-    CORsMiddleware,
-    allow_origins=["http://localhost:4200", "http://localhost:8080"],  # Angular and Spring Boot
+    CORSMiddleware,  # Fixed typo: was CORsMiddleware
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

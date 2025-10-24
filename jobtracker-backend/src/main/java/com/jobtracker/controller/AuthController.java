@@ -33,6 +33,9 @@ public class AuthController {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new DuplicateEmailException("Email already registered");
         }
+        // SECURITY FIX: Validate password strength
+        validatePassword(request.getPassword());
+
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
@@ -47,11 +50,31 @@ public class AuthController {
         Optional<User> user = userRepository.findByEmail(request.getEmail());
         if (user.isPresent() && passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
             String token = jwtUtil.generateToken(user.get().getUserId());
-            System.out.println("Token: " + token);
-            System.out.println("Name: " + user.get().getFirstName() + " " + user.get().getLastName());
+            // SECURITY FIX: Removed logging of tokens and PII
             return new LoginResponse(token, user.get().getFirstName(), user.get().getLastName());
         }
         throw new RuntimeException("Invalid credentials");
+    }
+
+    /**
+     * SECURITY FIX: Validate password strength
+     */
+    private void validatePassword(String password) {
+        if (password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("Password must contain at least one lowercase letter");
+        }
+        if (!password.matches(".*\\d.*")) {
+            throw new IllegalArgumentException("Password must contain at least one number");
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            throw new IllegalArgumentException("Password must contain at least one special character");
+        }
     }
 
     // --- DTOs ---

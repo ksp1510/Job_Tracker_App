@@ -15,10 +15,10 @@ export default function OAuth2CallbackPage() {
     const lastName = searchParams.get('lastName');
 
     if (token) {
-      // Store token in cookie
+      // SECURITY FIX: Always use secure cookies
       Cookies.set('token', token, {
         expires: 7,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Always require HTTPS
         sameSite: 'strict',
       });
 
