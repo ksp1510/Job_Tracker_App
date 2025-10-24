@@ -160,3 +160,24 @@ export interface FileUpload {
     uploadedAt: string;
     notes?: string;
 }
+
+export interface Feedback {
+    id?: string;
+    userId?: string;
+    name: string;
+    email: string;
+    type: FeedbackType;
+    rating: number;
+    message: string;
+    status?: string;
+    response?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export enum FeedbackType {
+    BUG = 'BUG',
+    FEATURE_REQUEST = 'FEATURE_REQUEST',
+    GENERAL = 'GENERAL',
+    IMPROVEMENT = 'IMPROVEMENT'
+}

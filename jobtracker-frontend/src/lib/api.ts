@@ -2,17 +2,18 @@
 // src/lib/api.ts
 import axios, { AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
-import { 
-  AuthResponse, 
-  LoginRequest, 
-  RegisterRequest, 
-  Application, 
-  JobListing, 
-  SavedJob, 
-  Notification, 
+import {
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  Application,
+  JobListing,
+  SavedJob,
+  Notification,
   JobSearchParams,
   PaginatedResponse,
-  User 
+  User,
+  Feedback
 } from './types';
 
 class ApiClient {
@@ -320,6 +321,36 @@ class ApiClient {
   async getPresignedUrl(id: string): Promise<string> {
     const response = await this.client.get(`/files/presigned/${id}`);
     return response.data;
+  }
+
+  // Feedback endpoints
+  async submitFeedback(feedback: Omit<Feedback, 'id' | 'userId' | 'status' | 'createdAt' | 'updatedAt'>): Promise<Feedback> {
+    const response = await this.client.post('/feedback', feedback);
+    return response.data;
+  }
+
+  async getMyFeedback(): Promise<Feedback[]> {
+    const response = await this.client.get('/feedback/my-feedback');
+    return response.data;
+  }
+
+  async getAllFeedback(): Promise<Feedback[]> {
+    const response = await this.client.get('/feedback/all');
+    return response.data;
+  }
+
+  async getFeedbackById(id: string): Promise<Feedback> {
+    const response = await this.client.get(`/feedback/${id}`);
+    return response.data;
+  }
+
+  async updateFeedback(id: string, data: { status?: string; response?: string }): Promise<Feedback> {
+    const response = await this.client.put(`/feedback/${id}`, data);
+    return response.data;
+  }
+
+  async deleteFeedback(id: string): Promise<void> {
+    await this.client.delete(`/feedback/${id}`);
   }
 }
 

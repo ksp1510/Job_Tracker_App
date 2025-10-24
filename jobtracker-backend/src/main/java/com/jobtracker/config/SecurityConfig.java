@@ -16,9 +16,11 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter, OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
         this.jwtFilter = jwtFilter;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
     }
 
     @Bean
@@ -37,12 +39,18 @@ public class SecurityConfig {
                 .requestMatchers("/reports/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll() // For H2 database console (dev only)
+                .requestMatchers("/feedback").permitAll() // Allow anonymous feedback submission
+                .requestMatchers("/login/**", "/oauth2/**").permitAll() // OAuth2 endpoints
                 // Protected endpoints
                 .requestMatchers("/applications/**").authenticated()
                 .requestMatchers("/jobs/**").authenticated()
                 .requestMatchers("/files/**").authenticated()
                 .requestMatchers("/notifications/**").authenticated()
+                .requestMatchers("/feedback/**").authenticated() // Other feedback endpoints require auth
                 .anyRequest().permitAll()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2LoginSuccessHandler)
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

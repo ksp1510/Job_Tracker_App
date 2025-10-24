@@ -36,8 +36,9 @@ public class User {
     @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    private String passwordHash;
+    private String passwordHash; // Can be null for OAuth2 users
+
+    private String authProvider; // "LOCAL", "GOOGLE", etc.
 
     private final Instant createdAt = Instant.now();
 }

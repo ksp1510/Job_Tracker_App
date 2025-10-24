@@ -38,6 +38,7 @@ public class AuthController {
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // hash password
+        user.setAuthProvider("LOCAL");
         return userRepository.save(user);
     }
 
