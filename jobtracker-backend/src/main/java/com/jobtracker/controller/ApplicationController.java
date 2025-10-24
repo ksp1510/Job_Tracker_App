@@ -4,6 +4,7 @@ import com.jobtracker.model.Application;
 import com.jobtracker.model.Files;
 import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
+import com.jobtracker.service.InputValidationService;
 import com.jobtracker.exception.ResourceNotFoundException;
 
 import lombok.AllArgsConstructor;
@@ -22,11 +23,14 @@ public class ApplicationController {
     private final ApplicationService service;
     private final JwtUtil jwtUtil;
     private final FileRepository fileRepository;
+    private final InputValidationService inputValidationService;
 
-    public ApplicationController(ApplicationService service, JwtUtil jwtUtil, FileRepository fileRepository) {
+    public ApplicationController(ApplicationService service, JwtUtil jwtUtil,
+                                FileRepository fileRepository, InputValidationService inputValidationService) {
         this.service = service;
         this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
+        this.inputValidationService = inputValidationService;
     }
 
     // 🔹 Create new application
@@ -35,6 +39,18 @@ public class ApplicationController {
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
+
+        // SECURITY: Validate input to prevent NoSQL injection
+        application.setCompanyName(inputValidationService.sanitizeJobField(application.getCompanyName()));
+        application.setJobTitle(inputValidationService.sanitizeJobField(application.getJobTitle()));
+        if (application.getJobLocation() != null) {
+            application.setJobLocation(inputValidationService.sanitizeJobField(application.getJobLocation()));
+        }
+        if (application.getStatus() != null) {
+            String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
+            application.setStatus(inputValidationService.validateStatus(application.getStatus(), allowedStatuses));
+        }
+
         application.setUserId(userId);
         return ResponseEntity.ok(service.createApplication(application));
     }
@@ -55,7 +71,12 @@ public class ApplicationController {
         @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
-        return ResponseEntity.ok(service.findByUserIdAndStatus(userId, status));
+
+        // SECURITY: Validate status parameter to prevent injection
+        String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
+        String validatedStatus = inputValidationService.validateStatus(status, allowedStatuses);
+
+        return ResponseEntity.ok(service.findByUserIdAndStatus(userId, validatedStatus));
     }
 
     // 🔹 Get application by ID - FIXED: Returns Application instead of Optional<Application>

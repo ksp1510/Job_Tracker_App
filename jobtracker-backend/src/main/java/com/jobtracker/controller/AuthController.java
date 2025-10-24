@@ -3,8 +3,14 @@ package com.jobtracker.controller;
 import com.jobtracker.model.User;
 import com.jobtracker.repository.UserRepository;
 import com.jobtracker.config.JwtUtil;
+import com.jobtracker.config.RateLimitService;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.constraints.Email;
@@ -27,8 +33,22 @@ public class AuthController {
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RateLimitService rateLimitService;
+
     @PostMapping("/register")
-    public User register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        // SECURITY: Rate limiting - 10 registrations per hour per IP
+        String clientIp = getClientIP(httpRequest);
+        Bucket bucket = rateLimitService.resolveBucketForRegistration(clientIp);
+        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+
+        if (!probe.isConsumed()) {
+            long waitForRefill = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many registration attempts. Please try again in " + waitForRefill + " seconds");
+        }
+
         // check if email already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new DuplicateEmailException("Email already registered");
@@ -42,18 +62,40 @@ public class AuthController {
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // hash password
         user.setAuthProvider("LOCAL");
-        return userRepository.save(user);
+        return ResponseEntity.ok(userRepository.save(user));
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        // SECURITY: Rate limiting - 5 login attempts per minute per IP
+        String clientIp = getClientIP(httpRequest);
+        Bucket bucket = rateLimitService.resolveBucketForLogin(clientIp);
+        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+
+        if (!probe.isConsumed()) {
+            long waitForRefill = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many login attempts. Please try again in " + waitForRefill + " seconds");
+        }
+
         Optional<User> user = userRepository.findByEmail(request.getEmail());
         if (user.isPresent() && passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
             String token = jwtUtil.generateToken(user.get().getUserId());
             // SECURITY FIX: Removed logging of tokens and PII
-            return new LoginResponse(token, user.get().getFirstName(), user.get().getLastName());
+            return ResponseEntity.ok(new LoginResponse(token, user.get().getFirstName(), user.get().getLastName()));
         }
         throw new RuntimeException("Invalid credentials");
+    }
+
+    /**
+     * Get client IP address, considering proxy headers
+     */
+    private String getClientIP(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0];
     }
 
     /**
