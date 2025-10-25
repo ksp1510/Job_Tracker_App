@@ -92,7 +92,7 @@ public class JobSearchController {
             @RequestParam(required = false) Double maxSalary,
             @RequestParam(required = false) List<String> skills,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "12") int size,
             @RequestHeader("Authorization") String authHeader) {
 
         String userId = extractUserId(authHeader);
