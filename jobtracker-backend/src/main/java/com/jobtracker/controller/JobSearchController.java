@@ -48,7 +48,7 @@ public class JobSearchController {
     @GetMapping("/cache")
     public ResponseEntity<PaginatedJobResponse> getCachedSearch(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String jobType,
