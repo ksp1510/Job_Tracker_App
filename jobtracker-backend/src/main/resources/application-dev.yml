@@ -22,6 +22,16 @@ app:
     seed:
       enabled: true
 
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy
+            client-secret: dummy
+
+
 # Management endpoints - More exposed in dev
 management:
   endpoints:
