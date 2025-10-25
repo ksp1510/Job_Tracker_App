@@ -10,6 +10,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
+import org.springframework.security.config.Customizer;
 
 import java.util.Arrays;
 import java.util.List;
@@ -40,8 +42,8 @@ public class SecurityConfig {
             // SECURITY FIX: Add security headers
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny()) // Prevent clickjacking
-                .xssProtection(xss -> xss.headerValue("1; mode=block")) // XSS protection
-                .contentTypeOptions(cto -> cto.disable()) // Already enabled by default
+                .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK)) // XSS protection
+                .contentTypeOptions(Customizer.withDefaults()) // Already enabled by default
                 .httpStrictTransportSecurity(hsts -> hsts
                     .maxAgeInSeconds(31536000)
                     .includeSubDomains(true)

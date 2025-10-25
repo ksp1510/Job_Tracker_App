@@ -5,6 +5,9 @@ import com.jobtracker.model.Files;
 import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.service.InputValidationService;
+
+import com.jobtracker.model.Status;
+
 import com.jobtracker.exception.ResourceNotFoundException;
 
 import lombok.AllArgsConstructor;
@@ -47,9 +50,11 @@ public class ApplicationController {
             application.setJobLocation(inputValidationService.sanitizeJobField(application.getJobLocation()));
         }
         if (application.getStatus() != null) {
-            String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
-            application.setStatus(inputValidationService.validateStatus(application.getStatus(), allowedStatuses));
-        }
+        String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
+        String validated = inputValidationService.validateStatus(application.getStatus(), allowedStatuses);
+        application.setStatus(Status.valueOf(validated)); // convert validated string back to enum
+    }
+
 
         application.setUserId(userId);
         return ResponseEntity.ok(service.createApplication(application));

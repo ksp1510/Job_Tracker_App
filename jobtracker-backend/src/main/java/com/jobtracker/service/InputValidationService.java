@@ -2,6 +2,8 @@ package com.jobtracker.service;
 
 import org.springframework.stereotype.Service;
 
+import com.jobtracker.model.Status;
+
 import java.util.regex.Pattern;
 
 /**
@@ -119,6 +121,13 @@ public class InputValidationService {
     /**
      * Validate status enum values
      */
+    public String validateStatus(Status status, String[] allowedValues) {
+        return validateStatus(status != null ? status.name() : null, allowedValues);
+    }
+
+    /**
+     * Validate status string values (for raw strings)
+     */
     public String validateStatus(String status, String[] allowedValues) {
         if (status == null) {
             return null;
@@ -132,4 +141,5 @@ public class InputValidationService {
 
         throw new IllegalArgumentException("Invalid status value: " + status);
     }
+
 }
