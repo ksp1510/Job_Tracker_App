@@ -1,0 +1,33 @@
+# Development Profile Configuration
+
+server:
+  ssl:
+    enabled: false
+
+# Logging - More verbose in development
+logging:
+  level:
+    com.jobtracker: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    software.amazon.awssdk: INFO
+
+# CORS - Allow all localhost ports in development
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:4200,http://localhost:8080,http://localhost:8001
+
+# Jobs seeding - Enabled by default in dev
+  jobs:
+    seed:
+      enabled: true
+
+# Management endpoints - More exposed in dev
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,beans
+  endpoint:
+    health:
+      show-details: always

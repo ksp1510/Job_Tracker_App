@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uvicorn
 import logging
+import os
 from contextlib import asynccontextmanager
 
 # Import our modules
@@ -68,10 +69,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# SECURITY FIX: Configure CORS from environment variable
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+
 app.add_middleware(
-    CORsMiddleware,
-    allow_origins=["http://localhost:4200", "http://localhost:8080"],  # Angular and Spring Boot
+    CORSMiddleware,  # Fixed typo: was CORsMiddleware
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,9 +135,25 @@ async def upload_resume_for_analysis(
     user_id: str = None
 ):
     """Upload and analyze resume file"""
+    # SECURITY: File size limit - 10MB max
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+
     try:
+        # Read file content to check size
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is 10MB"
+            )
+
+        # Reset file pointer for resume service
+        await file.seek(0)
+
         result = await resume_service.process_uploaded_resume(file, user_id)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Resume upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Resume upload failed: {str(e)}")

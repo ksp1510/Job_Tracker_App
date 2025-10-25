@@ -34,15 +34,17 @@ public class FileController {
     private final ApplicationService applicationService;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
-    
-    public FileController(S3Service s3Service, FileRepository fileRepository, 
-                         ApplicationService applicationService, UserRepository userRepository, 
-                         JwtUtil jwtUtil) {
+    private final com.jobtracker.service.FileValidationService fileValidationService;
+
+    public FileController(S3Service s3Service, FileRepository fileRepository,
+                         ApplicationService applicationService, UserRepository userRepository,
+                         JwtUtil jwtUtil, com.jobtracker.service.FileValidationService fileValidationService) {
         this.s3Service = s3Service;
         this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
         this.applicationService = applicationService;
         this.userRepository = userRepository;
+        this.fileValidationService = fileValidationService;
     }
 
     // FIXED: Proper token extraction and user ID retrieval
@@ -52,6 +54,9 @@ public class FileController {
         @RequestHeader("Authorization") String authHeader,
         @RequestParam("file") MultipartFile file) throws IOException {
 
+        // SECURITY FIX: Validate file before processing
+        fileValidationService.validatePdfFile(file);
+
         // Extract userId from token
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
@@ -59,7 +64,7 @@ public class FileController {
         // Get application and verify ownership
         Application app = applicationService.getApplication(applicationId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-        
+
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
@@ -100,10 +105,13 @@ public class FileController {
             @RequestHeader("Authorization") String authHeader,
             @RequestParam("file") MultipartFile file) throws IOException {
 
+        // SECURITY FIX: Validate file before processing
+        fileValidationService.validatePdfFile(file);
+
         // Extract userId from token
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtUtil.getUserId(token);
-        
+
         Application app = applicationService.getApplication(applicationId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
         
@@ -149,7 +157,16 @@ public class FileController {
     }
 
     @GetMapping("/applications/{applicationId}/files")
-    public ResponseEntity<List<Files>> getFilesByApplication(@PathVariable String applicationId) {
+    public ResponseEntity<List<Files>> getFilesByApplication(
+            @PathVariable String applicationId,
+            @RequestHeader("Authorization") String authHeader) {
+        // SECURITY FIX: Verify ownership before returning files
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
+        Application app = applicationService.getApplication(applicationId, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
         List<Files> files = fileRepository.findByApplicationId(applicationId);
         if (files.isEmpty()) {
             return ResponseEntity.noContent().build();
@@ -158,9 +175,20 @@ public class FileController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteFile(@PathVariable String id) {
+    public ResponseEntity<String> deleteFile(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authHeader) {
+        // SECURITY FIX: Verify ownership before deletion
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        // Verify the file belongs to the user
+        if (!fileMeta.getUserId().equals(userId)) {
+            throw new ResourceNotFoundException("File not found");
+        }
 
         // Extract key directly from filePath by removing s3://bucketName/
         String key = fileMeta.getFilePath()
@@ -174,9 +202,20 @@ public class FileController {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<byte[]> downloadFile(@PathVariable String id) {
+    public ResponseEntity<byte[]> downloadFile(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authHeader) {
+        // SECURITY FIX: Verify ownership before download
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        // Verify the file belongs to the user
+        if (!fileMeta.getUserId().equals(userId)) {
+            throw new ResourceNotFoundException("File not found");
+        }
 
         // Extract S3 key from filePath
         String key = fileMeta.getFilePath().replace("s3://" + bucketName + "/", "");
@@ -185,7 +224,6 @@ public class FileController {
         try {
             content = s3Service.download(bucketName, key);
         } catch (AwsServiceException | SdkClientException | IOException e) {
-            e.printStackTrace();
             throw new RuntimeException("Failed to download file", e);
         }
 
@@ -195,9 +233,20 @@ public class FileController {
     }
 
     @GetMapping("/presigned/{id}")
-    public ResponseEntity<String> getPresignedUrl(@PathVariable String id) {
+    public ResponseEntity<String> getPresignedUrl(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authHeader) {
+        // SECURITY FIX: Verify ownership before generating presigned URL
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtUtil.getUserId(token);
+
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        // Verify the file belongs to the user
+        if (!fileMeta.getUserId().equals(userId)) {
+            throw new ResourceNotFoundException("File not found");
+        }
 
         String key = fileMeta.getFilePath().replace("s3://" + bucketName + "/", "");
 

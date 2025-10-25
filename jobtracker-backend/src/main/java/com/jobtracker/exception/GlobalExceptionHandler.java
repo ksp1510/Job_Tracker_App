@@ -1,57 +1,144 @@
 package com.jobtracker.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.dao.DuplicateKeyException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * SECURITY: Global exception handler to prevent information disclosure
+ * Returns generic error messages in production
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    private Map<String, Object> createErrorResponse(String message, HttpStatus status) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now().toString());
+        error.put("status", status.value());
+        error.put("error", status.getReasonPhrase());
+        error.put("message", message);
+        return error;
+    }
+
     // Handles custom errors like duplicate email
     @ExceptionHandler(DuplicateEmailException.class)
-    public ResponseEntity<Map<String, String>> handleDuplicateEmail(DuplicateEmailException ex) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", ex.getMessage());
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<Map<String, Object>> handleDuplicateEmail(DuplicateEmailException ex) {
+        logger.warn("Duplicate email attempt: {}", ex.getMessage());
+        return new ResponseEntity<>(
+            createErrorResponse("Email already registered", HttpStatus.BAD_REQUEST),
+            HttpStatus.BAD_REQUEST
+        );
     }
 
     @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<Map<String, String>> handleMongoDuplicate(DuplicateKeyException ex) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "Email already registered");
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<Map<String, Object>> handleMongoDuplicate(DuplicateKeyException ex) {
+        logger.warn("Duplicate key error: {}", ex.getMessage());
+        return new ResponseEntity<>(
+            createErrorResponse("A record with this information already exists", HttpStatus.BAD_REQUEST),
+            HttpStatus.BAD_REQUEST
+        );
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleResourceNotFound(ResourceNotFoundException ex) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", ex.getMessage());
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
+        logger.debug("Resource not found: {}", ex.getMessage());
+        return new ResponseEntity<>(
+            createErrorResponse("Resource not found", HttpStatus.NOT_FOUND),
+            HttpStatus.NOT_FOUND
+        );
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        logger.warn("Invalid input: {}", ex.getMessage());
+        // Show specific validation message as it doesn't expose internal details
+        return new ResponseEntity<>(
+            createErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST),
+            HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        logger.warn("Access denied: {}", ex.getMessage());
+        return new ResponseEntity<>(
+            createErrorResponse("Access denied", HttpStatus.FORBIDDEN),
+            HttpStatus.FORBIDDEN
+        );
+    }
 
     // Handles @Valid validation errors (missing fields, invalid email, etc.)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, String> fieldErrors = new HashMap<>();
 
         ex.getBindingResult().getFieldErrors().forEach(error ->
-            errors.put(error.getField(), error.getDefaultMessage())
+            fieldErrors.put(error.getField(), error.getDefaultMessage())
         );
 
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        response.put("timestamp", LocalDateTime.now().toString());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("error", "Validation Failed");
+        response.put("errors", fieldErrors);
+
+        logger.debug("Validation errors: {}", fieldErrors);
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    // Handles any other unexpected exception
+    // SECURITY FIX: Handles any other unexpected exception without exposing internals
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleAllExceptions(Exception ex) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "Something went wrong: " + ex.getMessage());
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<Map<String, Object>> handleAllExceptions(Exception ex) {
+        // Log full exception details for debugging
+        logger.error("Unexpected error occurred", ex);
+
+        String message;
+        if ("prod".equals(activeProfile) || "production".equals(activeProfile)) {
+            // SECURITY: Generic message in production
+            message = "An unexpected error occurred. Please try again later.";
+        } else {
+            // More details in development for debugging
+            message = "Error: " + ex.getClass().getSimpleName();
+        }
+
+        return new ResponseEntity<>(
+            createErrorResponse(message, HttpStatus.INTERNAL_SERVER_ERROR),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
+        logger.error("Runtime error: ", ex);
+
+        String message;
+        if ("prod".equals(activeProfile) || "production".equals(activeProfile)) {
+            // SECURITY: Generic message in production
+            message = "An error occurred while processing your request";
+        } else {
+            // More details in development
+            message = ex.getMessage() != null ? ex.getMessage() : "Runtime error occurred";
+        }
+
+        return new ResponseEntity<>(
+            createErrorResponse(message, HttpStatus.INTERNAL_SERVER_ERROR),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
     }
 }

@@ -80,7 +80,13 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     setIsLoading(true);
     try {
       const response = await apiClient.login(data);
-      Cookies.set('token', response.token, { expires: 7, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+      // SECURITY FIX: Always use secure cookies
+      // Note: httpOnly cannot be set client-side; consider server-side cookie management for production
+      Cookies.set('token', response.token, {
+        expires: 7,
+        secure: true, // Always require HTTPS
+        sameSite: 'strict'
+      });
 
       setUser({
         userId: JSON.parse(atob(response.token.split('.')[1])).sub,
