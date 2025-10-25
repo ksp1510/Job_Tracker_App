@@ -71,11 +71,25 @@ export default function JobSearchPage() {
     queryKey: ['jobs', searchParams],
     queryFn: async () => {
       const hasCached = await apiClient.checkCacheStatus();
-      if (hasCached) {
+      const lastQuery = localStorage.getItem("lastQuery") || "";
+      const lastLocation = localStorage.getItem("lastLocation") || "";
+
+      // ⚙️ Use cache only if query and location match previous search
+      if (
+        hasCached &&
+        lastQuery === (searchParams.query?.trim() || "") &&
+        lastLocation === (searchParams.location?.trim() || "")
+      ) {
+        console.log("✅ Using cached results");
         const cached = await apiClient.getCachedResults(searchParams.page ?? 0, searchParams.size ?? ITEMS_PER_PAGE);
         if (cached) return cached;
       }
-      return apiClient.searchJobs(searchParams);
+
+      console.log("🔍 Fetching new results from backend");
+      const fresh = await apiClient.searchJobs(searchParams);
+      localStorage.setItem("lastQuery", searchParams.query?.trim() || "");
+      localStorage.setItem("lastLocation", searchParams.location?.trim() || "");
+      return fresh;
     },
     enabled: isAuthenticated,
   });
