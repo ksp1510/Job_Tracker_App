@@ -66,12 +66,8 @@ public class JobSearchService {
         // Check cache first
         SearchCacheEntry cached = searchCache.get(userId);
         if (cached != null && cached.isValid() && cached.matchesSearch(query, location)) {
-            System.out.println("✅ Returning cached results for user: " + userId + ", page: " + page + ", size: " + size);
-            // FIXED: Return correct page from cache
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedDate"));
-            Page<JobListing> results = performSearch(query, location, pageable);
-            searchCache.put(userId, new SearchCacheEntry(query, location, results));
-            return results;
+            System.out.println("✅ Using valid cached results for user: " + userId);
+            return getPageFromCache(cached, page, size);
         }
 
         System.out.println("🔍 Cache miss or expired - fetching fresh data for user: " + userId);
@@ -87,14 +83,9 @@ public class JobSearchService {
             System.err.println("❌ Failed to fetch jobs from external APIs: " + e.getMessage());
         }
 
-        Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "postedDate"));
+        Pageable pageable = PageRequest.of(0, size, Sort.by(Sort.Direction.DESC, "postedDate"));
         Page<JobListing> results = performSearch(query, location, pageable);
-
-
-
-        // Update Cache
         searchCache.put(userId, new SearchCacheEntry(query, location, results));
-        
         return results;
     }
 
