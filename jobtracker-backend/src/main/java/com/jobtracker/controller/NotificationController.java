@@ -132,7 +132,7 @@ public class NotificationController {
     // ================ NOTIFICATION CREATION ================
 
     /**
-     * Create interview reminder - FIXED: Set notifyAt to 24 hours before interview
+     * Create interview reminder
      */
     @PostMapping("/interview-reminder")
     public ResponseEntity<Notification> createInterviewReminder(

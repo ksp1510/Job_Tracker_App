@@ -259,7 +259,7 @@ public class ExternalJobApiService {
                     searchTerm.append("skills");
                 } 
                                
-                url.append("&page=1&num_pages=1");
+                url.append("&page=1&num_pages=100");
 
                 System.out.println("🌍 Calling JSearch API URL → " + url);
                 
