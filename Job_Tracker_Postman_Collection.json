@@ -1,0 +1,1566 @@
+{
+	"info": {
+		"_postman_id": "job-tracker-api-collection",
+		"name": "Job Tracker App - Complete API Collection",
+		"description": "Complete API testing collection for Job Tracker Application including Spring Boot backend and FastAPI AI microservices",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication & Users",
+			"item": [
+				{
+					"name": "Register New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.userId) {",
+									"        pm.environment.set(\"userId\", jsonData.userId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						},
+						"description": "Register a new user. Password must be 8+ characters with uppercase, lowercase, number, and special character."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.environment.set(\"authToken\", jsonData.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Login and receive JWT token. Token is automatically saved to environment variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "me"]
+						},
+						"description": "Get currently logged-in user profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"SecurePass123!\",\n    \"newPassword\": \"NewSecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/change-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "change-password"]
+						},
+						"description": "Change user password"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"newEmail\": \"newemail@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/change-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "change-email"]
+						},
+						"description": "Change user email address"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/delete-account",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "delete-account"]
+						},
+						"description": "Permanently delete user account and all associated data"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Job Search & Saved Jobs",
+			"item": [
+				{
+					"name": "Search Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/search?query=software engineer&location=New York&jobType=FULL_TIME&page=0&size=12",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "software engineer"
+								},
+								{
+									"key": "location",
+									"value": "New York"
+								},
+								{
+									"key": "jobType",
+									"value": "FULL_TIME",
+									"description": "FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP"
+								},
+								{
+									"key": "minSalary",
+									"value": "80000",
+									"disabled": true
+								},
+								{
+									"key": "maxSalary",
+									"value": "150000",
+									"disabled": true
+								},
+								{
+									"key": "skills",
+									"value": "Java,Spring Boot",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "12"
+								}
+							]
+						},
+						"description": "Search for jobs with filters. Returns paginated results with duplicate removal."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cache Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/cache/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "cache", "status"]
+						},
+						"description": "Check if user has cached search results"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cached Search Results",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/cache?page=0&size=12",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "cache"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "12"
+								},
+								{
+									"key": "query",
+									"value": "software engineer",
+									"disabled": true
+								},
+								{
+									"key": "location",
+									"value": "New York",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get cached job search results with optional filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Cache",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/cache",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "cache"]
+						},
+						"description": "Clear cached search results"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Job Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}"]
+						},
+						"description": "Get specific job details by ID (no auth required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Save Job",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.environment.set(\"savedJobId\", jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notes\": \"Interesting position, apply by end of month\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/save",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "save"]
+						},
+						"description": "Save/bookmark a job with optional notes"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Saved Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/saved",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "saved"]
+						},
+						"description": "Get all saved jobs for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Saved Job",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/saved/{{savedJobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "saved", "{{savedJobId}}"]
+						},
+						"description": "Remove a saved job"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/search-history",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "search-history"]
+						},
+						"description": "Get user's search history"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Applications",
+			"item": [
+				{
+					"name": "Create Application",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.environment.set(\"applicationId\", jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyName\": \"Tech Corp\",\n    \"jobTitle\": \"Senior Software Engineer\",\n    \"location\": \"New York, NY\",\n    \"status\": \"APPLIED\",\n    \"applicationDate\": \"2025-10-25\",\n    \"jobDescription\": \"We are looking for a talented software engineer...\",\n    \"notes\": \"Applied through company website\",\n    \"salary\": \"$120,000 - $150,000\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/applications",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications"]
+						},
+						"description": "Create a new job application. Status: APPLIED, INTERVIEW, ASSESSMENT, OFFER, REJECTED, HIRED, WITHDRAWN"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Applications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/applications",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications"]
+						},
+						"description": "Get all applications for the logged-in user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Applications by Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/applications/by-status?status=INTERVIEW",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications", "by-status"],
+							"query": [
+								{
+									"key": "status",
+									"value": "INTERVIEW",
+									"description": "APPLIED, INTERVIEW, ASSESSMENT, OFFER, REJECTED, HIRED, WITHDRAWN"
+								}
+							]
+						},
+						"description": "Filter applications by status"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Application by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/applications/{{applicationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications", "{{applicationId}}"]
+						},
+						"description": "Get specific application by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Application",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"INTERVIEW\",\n    \"interviewDate\": \"2025-11-01T14:00:00\",\n    \"notes\": \"Phone screen scheduled for next week\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/applications/{{applicationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications", "{{applicationId}}"]
+						},
+						"description": "Update application details"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Application",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/applications/{{applicationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications", "{{applicationId}}"]
+						},
+						"description": "Delete application"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Application with Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/applications/{{applicationId}}/with-files",
+							"host": ["{{baseUrl}}"],
+							"path": ["applications", "{{applicationId}}", "with-files"]
+						},
+						"description": "Get application with all attached files"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "File Management",
+			"item": [
+				{
+					"name": "Upload Resume",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/path/to/resume.pdf",
+									"description": "PDF file (max 10MB)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files/upload/resume?applicationId={{applicationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "upload", "resume"],
+							"query": [
+								{
+									"key": "applicationId",
+									"value": "{{applicationId}}"
+								}
+							]
+						},
+						"description": "Upload resume PDF to S3 (max 10MB)"
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Cover Letter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/path/to/coverletter.pdf",
+									"description": "PDF file (max 10MB)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files/upload/coverletter?applicationId={{applicationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "upload", "coverletter"],
+							"query": [
+								{
+									"key": "applicationId",
+									"value": "{{applicationId}}"
+								}
+							]
+						},
+						"description": "Upload cover letter PDF to S3 (max 10MB)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": ["{{baseUrl}}"],
+							"path": ["files"]
+						},
+						"description": "List all user's files"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Files by Application",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/files/applications/{{applicationId}}/files",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "applications", "{{applicationId}}", "files"]
+						},
+						"description": "Get files for specific application"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete File",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/files/delete/{{fileId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "delete", "{{fileId}}"]
+						},
+						"description": "Delete file from S3 and database"
+					},
+					"response": []
+				},
+				{
+					"name": "Download File",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/files/download/{{fileId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "download", "{{fileId}}"]
+						},
+						"description": "Download file directly"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Presigned URL",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/files/presigned/{{fileId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "presigned", "{{fileId}}"]
+						},
+						"description": "Generate S3 presigned URL (valid 1 hour)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"item": [
+				{
+					"name": "Get All Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications"]
+						},
+						"description": "Get all notifications for user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unread Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/unread",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "unread"]
+						},
+						"description": "Get unread notifications that are due"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "{{notificationId}}", "read"]
+						},
+						"description": "Mark notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/{{notificationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "{{notificationId}}"]
+						},
+						"description": "Delete notification"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Interview Reminder",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"applicationId\": \"{{applicationId}}\",\n    \"interviewDate\": \"2025-11-01T14:00:00\",\n    \"customMessage\": \"Phone screen with hiring manager\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/interview-reminder",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "interview-reminder"]
+						},
+						"description": "Create interview reminder (notifies 1 day before)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Deadline Reminder",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"applicationId\": \"{{applicationId}}\",\n    \"assessmentDeadline\": \"2025-11-05T23:59:59\",\n    \"customMessage\": \"Complete coding challenge\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/deadline-reminder",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "deadline-reminder"]
+						},
+						"description": "Create assessment deadline reminder (notifies 1 day before)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Custom Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"applicationId\": \"{{applicationId}}\",\n    \"message\": \"Follow up with recruiter\",\n    \"notifyAt\": \"2025-10-30T10:00:00\",\n    \"type\": \"CUSTOM\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/custom",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "custom"]
+						},
+						"description": "Create custom notification with user-specified time"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notification Preferences",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/preferences",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "preferences"]
+						},
+						"description": "Get user's notification preferences"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Notification Preferences",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailEnabled\": true,\n    \"inAppEnabled\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/preferences",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "preferences"]
+						},
+						"description": "Update notification preferences"
+					},
+					"response": []
+				},
+				{
+					"name": "Notification Stream (SSE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/stream",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "stream"]
+						},
+						"description": "Real-time notification stream via Server-Sent Events. Note: This endpoint streams data and may not work well in Postman. Use EventSource in browser or curl."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Feedback",
+			"item": [
+				{
+					"name": "Submit Feedback",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}",
+								"disabled": true,
+								"description": "Optional - can be anonymous"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"FEATURE_REQUEST\",\n    \"message\": \"Would love to see integration with LinkedIn\",\n    \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/feedback",
+							"host": ["{{baseUrl}}"],
+							"path": ["feedback"]
+						},
+						"description": "Submit feedback (can be anonymous or authenticated)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Feedback",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/feedback/my-feedback",
+							"host": ["{{baseUrl}}"],
+							"path": ["feedback", "my-feedback"]
+						},
+						"description": "Get user's own feedback submissions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Feedback (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feedback/all",
+							"host": ["{{baseUrl}}"],
+							"path": ["feedback", "all"]
+						},
+						"description": "Get all feedback (admin endpoint - should be protected)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Generate Excel Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/excel?status=INTERVIEW",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "excel"],
+							"query": [
+								{
+									"key": "status",
+									"value": "INTERVIEW",
+									"description": "Optional filter by status"
+								}
+							]
+						},
+						"description": "Generate applications report as Excel file"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate PDF Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reports/pdf?status=INTERVIEW",
+							"host": ["{{baseUrl}}"],
+							"path": ["reports", "pdf"],
+							"query": [
+								{
+									"key": "status",
+									"value": "INTERVIEW",
+									"description": "Optional filter by status"
+								}
+							]
+						},
+						"description": "Generate applications report as PDF"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "AI Interview Prep",
+			"item": [
+				{
+					"name": "Save Interview Question",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"question\": \"Tell me about a time you resolved a conflict in a team\",\n    \"answer\": \"In my previous role as a software engineer...\",\n    \"category\": \"BEHAVIORAL\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ai/interview-prep",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "interview-prep"]
+						},
+						"description": "Save interview Q&A. Note: AI features must be enabled (app.ai.enabled=true)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Interview Questions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/interview-prep",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "interview-prep"]
+						},
+						"description": "Get all user's interview prep questions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Questions by Category",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/interview-prep/category/BEHAVIORAL",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "interview-prep", "category", "BEHAVIORAL"]
+						},
+						"description": "Get questions by category"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Bookmark",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/interview-prep/{{interviewPrepId}}/bookmark",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "interview-prep", "{{interviewPrepId}}", "bookmark"]
+						},
+						"description": "Toggle bookmark on question"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Test Endpoints",
+			"item": [
+				{
+					"name": "Send Test Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/test/send-test-email?toEmail=test@example.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["test", "send-test-email"],
+							"query": [
+								{
+									"key": "toEmail",
+									"value": "test@example.com"
+								}
+							]
+						},
+						"description": "Send test email via AWS SES"
+					},
+					"response": []
+				},
+				{
+					"name": "Check API Keys Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/api-keys-status",
+							"host": ["{{baseUrl}}"],
+							"path": ["test", "api-keys-status"]
+						},
+						"description": "Check if API keys are configured (returns SET/NOT_SET, never actual keys)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "AI Microservices",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{aiBaseUrl}}/health",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "AI service health check"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Models Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/models/status",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "models", "status"]
+						},
+						"description": "Get status of AI models and services"
+					},
+					"response": []
+				},
+				{
+					"name": "AI Job Search",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"query\": \"senior software engineer\",\n    \"location\": \"New York, NY\",\n    \"skills\": [\"Python\", \"Java\", \"React\"],\n    \"experience_level\": \"senior\",\n    \"salary_min\": 120000,\n    \"salary_max\": 180000,\n    \"remote_only\": false,\n    \"employment_type\": \"full-time\",\n    \"use_resume_matching\": true,\n    \"resume_file_id\": \"resume123\",\n    \"limit\": 20\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/jobs/search",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "jobs", "search"]
+						},
+						"description": "Search jobs with AI ranking and matching"
+					},
+					"response": []
+				},
+				{
+					"name": "Match Jobs to Resume",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"resume_text\": \"Experienced software engineer with 5+ years in Python and Java...\",\n    \"job_descriptions\": [\n        {\n            \"job_id\": \"job1\",\n            \"title\": \"Senior Software Engineer\",\n            \"company\": \"Tech Corp\",\n            \"description\": \"We are looking for...\",\n            \"requirements\": [\"5+ years Python\", \"REST APIs\"],\n            \"skills\": [\"Python\", \"Django\", \"PostgreSQL\"]\n        }\n    ],\n    \"match_threshold\": 0.6\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/jobs/match",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "jobs", "match"]
+						},
+						"description": "Match jobs to resume using semantic similarity"
+					},
+					"response": []
+				},
+				{
+					"name": "Analyze Resume",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"resume_text\": \"JOHN DOE\\nSoftware Engineer\\n\\nEXPERIENCE\\nSenior Software Engineer at Tech Corp (2020-Present)\\n- Led team of 5 engineers\\n- Developed microservices using Python and Java\\n\\nSKILLS\\nPython, Java, React, PostgreSQL, Docker, Kubernetes\",\n    \"job_description\": \"We are looking for a Senior Software Engineer with expertise in Python...\",\n    \"analysis_type\": \"full\"\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/resume/analyze",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "resume", "analyze"]
+						},
+						"description": "Analyze resume and extract skills, experience, education. analysis_type: full|keywords|skills|experience"
+					},
+					"response": []
+				},
+				{
+					"name": "Optimize Resume",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"resume_text\": \"JOHN DOE\\nSoftware Engineer\\n\\nEXPERIENCE\\nSenior Software Engineer at Tech Corp (2020-Present)\\n- Led team of 5 engineers\\n- Developed microservices using Python and Java\",\n    \"job_description\": \"We are seeking a Senior Software Engineer with 5+ years of experience in Python, microservices architecture, and team leadership. Experience with cloud platforms (AWS/GCP) and CI/CD is highly desirable.\"\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/resume/optimize",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "resume", "optimize"]
+						},
+						"description": "Optimize resume based on job description"
+					},
+					"response": []
+				},
+				{
+					"name": "Upload and Analyze Resume",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/path/to/resume.pdf",
+									"description": "PDF/DOCX/TXT file (max 10MB)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/resume/upload?user_id=user123",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "resume", "upload"],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "user123",
+									"description": "Optional"
+								}
+							]
+						},
+						"description": "Upload and analyze resume file (PDF/DOCX/TXT, max 10MB)"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Interview Questions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"resume_text\": \"Senior Software Engineer with 5+ years experience in Python, Java, React...\",\n    \"job_description\": \"We are looking for a Senior Software Engineer to lead our backend team...\",\n    \"job_title\": \"Senior Software Engineer\",\n    \"company_name\": \"Tech Corp\",\n    \"interview_type\": \"technical\",\n    \"difficulty_level\": \"medium\",\n    \"num_questions\": 10\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/interview/questions",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "interview", "questions"]
+						},
+						"description": "Generate interview questions based on resume and job description. difficulty_level: easy|medium|hard, num_questions: 1-20"
+					},
+					"response": []
+				},
+				{
+					"name": "Start Mock Interview",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.session && jsonData.session.session_id) {",
+									"        pm.environment.set(\"mockInterviewSessionId\", jsonData.session.session_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": \"user123\",\n    \"resume_text\": \"Senior Software Engineer with 5+ years experience...\",\n    \"job_description\": \"We are looking for a Senior Software Engineer...\",\n    \"job_title\": \"Senior Software Engineer\",\n    \"company_name\": \"Tech Corp\",\n    \"interview_duration\": 30,\n    \"interview_type\": \"technical\"\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/interview/mock-start",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "interview", "mock-start"]
+						},
+						"description": "Start mock interview session. interview_duration: 10-60 minutes"
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Mock Interview Answer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/interview/mock-answer?session_id={{mockInterviewSessionId}}&question_id=q1&answer=In my previous role, I implemented a caching layer using Redis which improved response times by 40%...",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "interview", "mock-answer"],
+							"query": [
+								{
+									"key": "session_id",
+									"value": "{{mockInterviewSessionId}}"
+								},
+								{
+									"key": "question_id",
+									"value": "q1"
+								},
+								{
+									"key": "answer",
+									"value": "In my previous role, I implemented a caching layer using Redis which improved response times by 40%..."
+								}
+							]
+						},
+						"description": "Process and evaluate user's answer in mock interview"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mock Interview Session",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/interview/mock-session/{{mockInterviewSessionId}}",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "interview", "mock-session", "{{mockInterviewSessionId}}"]
+						},
+						"description": "Get mock interview session details"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Embeddings",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"texts\": [\n        \"Software engineer with Python experience\",\n        \"Backend developer specializing in Java\"\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{aiBaseUrl}}/api/v1/embeddings/generate",
+							"host": ["{{aiBaseUrl}}"],
+							"path": ["api", "v1", "embeddings", "generate"]
+						},
+						"description": "Generate embeddings for text using sentence-transformers"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "aiBaseUrl",
+			"value": "http://localhost:8001",
+			"type": "string"
+		}
+	]
+}
