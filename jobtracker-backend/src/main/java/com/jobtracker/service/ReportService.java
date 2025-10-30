@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -52,7 +51,7 @@ public class ReportService {
                 row.createCell(1).setCellValue(app.getJobTitle());
                 row.createCell(2).setCellValue(app.getStatus().toString());
                 row.createCell(3).setCellValue(app.getAppliedDate() != null ?
-                        app.getAppliedDate().format(DateTimeFormatter.ISO_DATE) : "");
+                        app.getAppliedDate().toString() : "");
                 row.createCell(4).setCellValue(app.getJobLocation());
             }
 

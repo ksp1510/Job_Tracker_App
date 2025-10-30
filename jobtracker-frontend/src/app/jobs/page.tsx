@@ -71,11 +71,25 @@ export default function JobSearchPage() {
     queryKey: ['jobs', searchParams],
     queryFn: async () => {
       const hasCached = await apiClient.checkCacheStatus();
-      if (hasCached) {
+      const lastQuery = localStorage.getItem("lastQuery") || "";
+      const lastLocation = localStorage.getItem("lastLocation") || "";
+
+      // ⚙️ Use cache only if query and location match previous search
+      if (
+        hasCached &&
+        lastQuery === (searchParams.query?.trim() || "") &&
+        lastLocation === (searchParams.location?.trim() || "")
+      ) {
+        console.log("✅ Using cached results");
         const cached = await apiClient.getCachedResults(searchParams.page ?? 0, searchParams.size ?? ITEMS_PER_PAGE);
         if (cached) return cached;
       }
-      return apiClient.searchJobs(searchParams);
+
+      console.log("🔍 Fetching new results from backend");
+      const fresh = await apiClient.searchJobs(searchParams);
+      localStorage.setItem("lastQuery", searchParams.query?.trim() || "");
+      localStorage.setItem("lastLocation", searchParams.location?.trim() || "");
+      return fresh;
     },
     enabled: isAuthenticated,
   });
@@ -152,7 +166,24 @@ export default function JobSearchPage() {
         jobDescription: job.description,
         jobLink: job.applyUrl,
         status: 'APPLIED' as any,
-        salary: job.salary || job.salaryRange,
+        salary: (() => {
+          const raw = job.salary || job.salaryRange;
+          if (!raw) return undefined;
+
+          // Remove all non-numeric, non-dash characters
+          const clean = String(raw).replace(/[^0-9.-]/g, "").trim();
+
+          // Handle ranges like "120000-150000"
+          if (clean.includes("-")) {
+            const [min, max] = clean.split("-").map(Number);
+            return !isNaN(min) && !isNaN(max) ? (min + max) / 2 : undefined;
+          }
+
+          // Single numeric salary
+          const num = Number(clean);
+          return isNaN(num) ? undefined : num;
+        })(),
+        salaryText: job.salary || job.salaryRange,
         appliedDate: new Date().toISOString().split('T')[0],
         notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
         externalJobId: job.id,

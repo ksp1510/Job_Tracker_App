@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.Builder;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
@@ -11,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-
+import jakarta.persistence.Column;
 import java.time.Instant;
 
 @Data
@@ -20,7 +21,7 @@ import java.time.Instant;
 @Builder
 @Document(collection = "users")
 @CompoundIndexes({
-    @CompoundIndex(name = "unique_email", def = "{'email': 1}", unique = true)
+@CompoundIndex(name = "unique_email", def = "{'email': 1}", unique = true)
 })
 public class User {
     @Id
@@ -41,4 +42,8 @@ public class User {
     private String authProvider; // "LOCAL", "GOOGLE", etc.
 
     private final Instant createdAt = Instant.now();
+
+    @Column(name = "timezone")
+    private String timezone = "America/Toronto"; // default
+
 }

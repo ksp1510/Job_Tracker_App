@@ -88,7 +88,17 @@ export default function NewApplicationPage() {
         jobLink: data.jobLink,
         recruiterContact: data.recruiterContact,
         status: data.status,
-        salary: data.salary,
+        salaryText: data.salary || undefined,
+        salary: (() => {
+          if (!data.salary) return undefined;
+          const clean = data.salary.replace(/[^0-9.-]/g, "");
+          if (clean.includes("-")) {
+            const [min, max] = clean.split("-").map(Number);
+            return (min + max) / 2;
+          }
+          const num = Number(clean);
+          return isNaN(num) ? undefined : num;
+        })(),
         notes: data.notes,
         appliedDate: data.appliedDate,
         referral: data.referral,

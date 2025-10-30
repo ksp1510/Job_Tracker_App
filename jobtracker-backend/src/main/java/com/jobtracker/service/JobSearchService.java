@@ -1,6 +1,7 @@
 // Job Search Service
 package com.jobtracker.service;
 
+import java.util.regex.Pattern;
 import com.jobtracker.model.JobListing;
 import com.jobtracker.model.JobSearch;
 import com.jobtracker.model.SavedJob;
@@ -193,13 +194,16 @@ public class JobSearchService {
         boolean hasLocation = location != null && !location.isBlank();
 
         if (hasQuery && hasLocation) {
-            return jobListingRepository.findByIsActiveTrueAndTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(
-                query.trim(), location.trim(), pageable);
+            return jobListingRepository.findByIsActiveTrueAndTitleRegexAndLocationRegex(
+            ".*" + Pattern.quote(query.trim()) + ".*",
+            ".*" + Pattern.quote(location.trim()) + ".*",
+            pageable);
         }
     
         if (hasQuery) {
-            return jobListingRepository.findByIsActiveTrueAndTitleContainingIgnoreCase(
-                query.trim(), pageable);
+            return jobListingRepository.findByIsActiveTrueAndTitleRegex(
+                ".*" + Pattern.quote(query.trim()) + ".*",
+                pageable);
         }
         
         if (hasLocation) {

@@ -5,12 +5,19 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
+import com.jobtracker.util.SalaryDeserializer;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 @Document(collection = "applications")
@@ -34,28 +41,35 @@ public class Application {
     @NotBlank(message = "Job Description is required")
     private String jobDescription;
     
-    @DecimalMin(value = "0.0", inclusive = true, message = "Salary must be non-negative")
+    @JsonAlias({"salary"})
+    @JsonDeserialize(using = SalaryDeserializer.class)
+    @DecimalMin(value = "0.0", inclusive = true)
     private Double salary;
+
+    private String salaryText; // optional field for raw value
+
     private String jobLink;
     private String recruiterContact;
 
     @NotNull(message = "Status is required")
     private Status status;          // Applied, Interview, Offer, Rejected
-    private LocalDate appliedDate;
-    private LocalDateTime lastStatusChangeDate;
+    private Instant appliedDate;
+    private Instant lastStatusChangeDate;
 
     @Indexed
     private String externalJobId;
 
-    private LocalDateTime interviewDate;
-    private LocalDateTime assessmentDeadline;
+    private String interviewDate;
+    private String assessmentDeadline;
     
     private String resumeId;        // reference to resume used
     private String coverLetterId;
     private String notes;
     private String referral;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+
+    
+    private Instant createdAt;
+    private Instant updatedAt;
 
     // Add constructor for easy testing
     public Application() {}
@@ -67,7 +81,7 @@ public class Application {
         this.jobLocation = jobLocation;
         this.jobDescription = jobDescription;
         this.status = status;
-        this.appliedDate = LocalDate.now();
+        this.appliedDate = Instant.now();
         
     }
 }
