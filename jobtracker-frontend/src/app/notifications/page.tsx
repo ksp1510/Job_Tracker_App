@@ -20,13 +20,39 @@ import {
   CheckIcon,
   BuildingOfficeIcon,
   BriefcaseIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
+
+
+// Common timezones for dropdown
+const TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
+  { value: 'America/Phoenix', label: 'Arizona Time (MST)' },
+  { value: 'America/Toronto', label: 'Toronto (ET)' },
+  { value: 'America/Vancouver', label: 'Vancouver (PT)' },
+  { value: 'America/Halifax', label: 'Halifax (AT)' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
+  { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+  { value: 'Asia/Kolkata', label: 'India (IST)' },
+  { value: 'Australia/Sydney', label: 'Sydney (AEDT/AEST)' },
+  { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
+];
 
 interface ReminderForm {
   applicationId: string;
   type: 'interview' | 'deadline' | 'custom';
   date: string;
   time: string;
+  timezone: string;
   message: string;
 }
 
@@ -45,6 +71,51 @@ function formatUtcToLocal(utcString: string) {
   } catch {
     return utcString;
   }
+}
+
+// Helper function to convert date, time, and timezone to ISO 8601 with timezone
+function toISO8601WithTimezone(date: string, time: string, timezone: string): string {
+  // Combine date and time
+  const dateTimeStr = `${date}T${time}`;
+  
+  // Create a date object in the specified timezone
+  // We'll use Intl.DateTimeFormat to help with timezone conversion
+  const dateObj = new Date(`${dateTimeStr}:00`);
+  
+  // Format to ISO 8601 with timezone offset
+  // For proper conversion, we need to use a library or calculate offset
+  // Here's a simple approach using the timezone
+  
+  // Get timezone offset in hours
+  const getTimezoneOffset = (tz: string, date: Date): string => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset'
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const offsetPart = parts.find(part => part.type === 'timeZoneName');
+    
+    if (offsetPart && offsetPart.value.startsWith('GMT')) {
+      return offsetPart.value.replace('GMT', '');
+    }
+
+    // Fallback: calculate offset manually
+    const localDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const diffMs = localDate.getTime() - utcDate.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.abs(Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)));
+    
+    const sign = diffHrs >= 0 ? '+' : '-';
+    const hours = String(Math.abs(diffHrs)).padStart(2, '0');
+    const minutes = String(diffMins).padStart(2, '0');
+    
+    return `${sign}${hours}:${minutes}`;
+  };
+  
+  const offset = getTimezoneOffset(timezone, dateObj);
+  return `${dateTimeStr}:00${offset}`;
 }
 
 // Notification Detail Modal Component
@@ -162,6 +233,22 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('unread');
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
+  const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Form for creating reminders
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ReminderForm>({
+    defaultValues: {
+      timezone: defaultTimezone,
+    },
+  });
+  const watchedType = watch('type');
+
   // Fetch notifications
   const { data: allNotifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -169,17 +256,7 @@ export default function NotificationsPage() {
     enabled: isAuthenticated,
   });
 
-  // Sort in descending order (newest first)
-  /**
-  const allNotifications = useMemo(() => {
-    return [...allNotificationsData].sort((a, b) => 
-      new Date(b.notifyAt).getTime() - new Date(a.notifyAt).getTime()
-    );
-  }, [allNotificationsData]);
-  */
-
   // Fetch unread notifications
-  
   const { data: unreadNotifications = [] } = useQuery({
     queryKey: ['unread-notifications'],
     queryFn: () => apiClient.getUnreadNotifications(),
@@ -194,18 +271,6 @@ export default function NotificationsPage() {
     },
   });
 
-  
-
-
-  // Sort unread as well (though backend should already do this)
-  /**
-  const unreadNotifications = useMemo(() => {
-    return [...unreadNotificationsData].sort((a, b) => 
-      new Date(b.notifyAt).getTime() - new Date(a.notifyAt).getTime()
-    );
-  }, [unreadNotificationsData]);
-  */
-
   // Fetch applications for displaying in notifications
   const { data: applications = [] } = useQuery({
     queryKey: ['applications'],
@@ -213,9 +278,7 @@ export default function NotificationsPage() {
     enabled: isAuthenticated,
   });
 
-  // Form for creating reminders
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ReminderForm>();
-  const watchedType = watch('type');
+  
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -242,7 +305,6 @@ export default function NotificationsPage() {
       apiClient.createInterviewReminder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['unread-notifications'] });
       toast.success('Interview reminder created');
       setShowReminderForm(false);
       reset();
@@ -257,7 +319,6 @@ export default function NotificationsPage() {
       apiClient.createDeadlineReminder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['unread-notifications'] });
       toast.success('Deadline reminder created');
       setShowReminderForm(false);
       reset();
@@ -272,7 +333,6 @@ export default function NotificationsPage() {
       apiClient.createCustomNotification(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['unread-notifications'] });
       toast.success('Custom reminder created');
       setShowReminderForm(false);
       reset();
@@ -283,30 +343,26 @@ export default function NotificationsPage() {
   });
 
   const onSubmitReminder = (data: ReminderForm) => {
-    const dateTime = `${data.date}T${data.time}:00`;
+    const dateTimeWithTz = toISO8601WithTimezone(data.date, data.time, data.timezone);
     
-    switch (data.type) {
-      case 'interview':
-        createInterviewReminderMutation.mutate({
-          applicationId: data.applicationId,
-          interviewDate: dateTime,
-          customMessage: data.message,
-        });
-        break;
-      case 'deadline':
-        createDeadlineReminderMutation.mutate({
-          applicationId: data.applicationId,
-          assessmentDeadline: dateTime,
-          customMessage: data.message,
-        });
-        break;
-      case 'custom':
-        createCustomNotificationMutation.mutate({
-          applicationId: data.applicationId || undefined,
-          message: data.message,
-          eventDate: dateTime,
-        });
-        break;
+    if (data.type === 'interview') {
+      createInterviewReminderMutation.mutate({
+        applicationId: data.applicationId,
+        interviewDate: dateTimeWithTz,
+        customMessage: data.message || undefined,
+      });
+    } else if (data.type === 'deadline') {
+      createDeadlineReminderMutation.mutate({
+        applicationId: data.applicationId,
+        assessmentDeadline: dateTimeWithTz,
+        customMessage: data.message || undefined,
+      });
+    } else if (data.type === 'custom') {
+      createCustomNotificationMutation.mutate({
+        applicationId: data.applicationId || undefined,
+        eventDate: dateTimeWithTz,
+        message: data.message,
+      });
     }
   };
 
@@ -591,6 +647,32 @@ export default function NotificationsPage() {
                   {errors.time && (
                     <p className="mt-1 text-sm text-red-600">{errors.time.message}</p>
                   )}
+                </div>
+
+                {/* NEW: Timezone Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900">
+                    <div className="flex items-center space-x-2">
+                      <GlobeAltIcon className="h-4 w-4 text-gray-500" />
+                      <span>Timezone</span>
+                    </div>
+                  </label>
+                  <select
+                    {...register('timezone', { required: 'Timezone is required' })}
+                    className="text-gray-900 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.timezone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.timezone.message}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Your detected timezone: {defaultTimezone}
+                  </p>
                 </div>
 
                 {/* Message */}

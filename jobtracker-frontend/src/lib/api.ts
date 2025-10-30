@@ -52,6 +52,8 @@ class ApiClient {
     );
   }
 
+  
+
   // Auth endpoints
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await this.client.post('/auth/register', data);

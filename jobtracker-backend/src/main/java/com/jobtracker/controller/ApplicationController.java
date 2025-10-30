@@ -5,7 +5,7 @@ import com.jobtracker.model.Files;
 import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.service.InputValidationService;
-
+import com.jobtracker.service.NotificationService;
 import com.jobtracker.model.Status;
 
 import com.jobtracker.exception.ResourceNotFoundException;
@@ -24,13 +24,15 @@ import java.util.List;
 public class ApplicationController {
 
     private final ApplicationService service;
+    private final NotificationService notificationService;
     private final JwtUtil jwtUtil;
     private final FileRepository fileRepository;
     private final InputValidationService inputValidationService;
 
-    public ApplicationController(ApplicationService service, JwtUtil jwtUtil,
+    public ApplicationController(ApplicationService service, NotificationService notificationService, JwtUtil jwtUtil,
                                 FileRepository fileRepository, InputValidationService inputValidationService) {
         this.service = service;
+        this.notificationService = notificationService;
         this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
         this.inputValidationService = inputValidationService;
@@ -46,18 +48,49 @@ public class ApplicationController {
         // SECURITY: Validate input to prevent NoSQL injection
         application.setCompanyName(inputValidationService.sanitizeJobField(application.getCompanyName()));
         application.setJobTitle(inputValidationService.sanitizeJobField(application.getJobTitle()));
+        
         if (application.getJobLocation() != null) {
             application.setJobLocation(inputValidationService.sanitizeJobField(application.getJobLocation()));
         }
+        
+        if (application.getSalary() == null && application.getSalaryText() != null) {
+            String clean = application.getSalaryText()
+                .replaceAll("[^0-9.\\-]", "") // remove $, commas, etc.
+                .trim();
+
+            if (clean.contains("-")) {
+                try {
+                    String[] parts = clean.split("-");
+                    double min = Double.parseDouble(parts[0]);
+                    double max = Double.parseDouble(parts[1]);
+                    application.setSalary((min + max) / 2); // store average
+                } catch (NumberFormatException ignored) {}
+            } else if (!clean.isEmpty()) {
+                application.setSalary(Double.parseDouble(clean));
+            }
+        }
+
         if (application.getStatus() != null) {
-        String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
-        String validated = inputValidationService.validateStatus(application.getStatus(), allowedStatuses);
-        application.setStatus(Status.valueOf(validated)); // convert validated string back to enum
-    }
+            String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
+            String validated = inputValidationService.validateStatus(application.getStatus(), allowedStatuses);
+            application.setStatus(Status.valueOf(validated)); // convert validated string back to enum
+        }
 
 
         application.setUserId(userId);
-        return ResponseEntity.ok(service.createApplication(application));
+
+        Application savedApp = service.createApplication(application);
+        
+        try {
+            if (savedApp.getStatus() == Status.APPLIED) {
+                notificationService.createFollowUpReminder(savedApp);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to create follow-up reminder for application: " + savedApp.getId());
+            e.printStackTrace();
+        }
+        
+        return ResponseEntity.ok(savedApp);
     }
 
     // 🔹 Get all applications for logged in user

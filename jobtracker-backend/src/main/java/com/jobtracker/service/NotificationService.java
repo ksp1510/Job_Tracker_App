@@ -13,11 +13,14 @@ import com.jobtracker.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class NotificationService {
@@ -40,141 +43,219 @@ public class NotificationService {
         this.sesService = sesService;
     }
 
+    private static final Map<String,String> TZ_ABBR = Map.of(
+    "EST","America/Toronto", "EDT","America/Toronto",
+    "PST","America/Los_Angeles", "PDT","America/Los_Angeles",
+    "CST","America/Chicago", "CDT","America/Chicago",
+    "IST","Asia/Kolkata"
+    );
+
+    private ZoneId getUserZone(String userId) {
+        String id = userRepository.findById(userId)
+            .map(User::getTimezone).orElse(null);
+
+        if (id == null || id.isBlank()) return ZoneId.of("UTC");
+        String canonical = TZ_ABBR.getOrDefault(id.trim(), id.trim());
+        try {
+            return ZoneId.of(canonical); // IANA only
+        } catch (Exception e) {
+            // log once
+            return ZoneId.of("UTC");
+        }
+    }
+
     /**
      * Create follow-up reminder when application is created with APPLIED status
      */
     public void createFollowUpReminder(Application app) {
-        LocalDateTime appliedLocal; 
-        if (app.getCreatedAt() instanceof LocalDateTime createdAt) {
-            appliedLocal = createdAt;
-        } else {
-            String createdAtStr = String.valueOf(app.getCreatedAt());
-            appliedLocal = LocalDateTime.parse(createdAtStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        try {
+            // Validate inputs
+            if (app == null) {
+                System.err.println("❌ Cannot create follow-up reminder: application is null");
+                return;
+            }
+            
+            if (app.getId() == null) {
+                System.err.println("❌ Cannot create follow-up reminder: application ID is null");
+                return;
+            }
+            
+            if (app.getUserId() == null) {
+                System.err.println("❌ Cannot create follow-up reminder: user ID is null");
+                return;
+            }
+            
+            // Get created time (should be Instant)
+            Instant createdAtInstant = app.getCreatedAt();
+            if (createdAtInstant == null) {
+                System.err.println("⚠️ CreatedAt is null, using current time");
+                createdAtInstant = Instant.now();
+            }
+            
+            // Get user timezone
+            ZoneId userZone = getUserZone(app.getUserId());
+            
+            // Calculate notification time: 7 days after application in user's timezone
+            ZonedDateTime createdInUserTz = createdAtInstant.atZone(userZone);
+            ZonedDateTime notifyAtUserTz = createdInUserTz.plusDays(7);
+            
+            // Convert to UTC for storage
+            Instant notifyAtInstant = notifyAtUserTz.toInstant();
+            LocalDateTime notifyAtUTC = LocalDateTime.ofInstant(notifyAtInstant, ZoneOffset.UTC);
+            
+            // Create notification
+            Notification n = new Notification();
+            n.setUserId(app.getUserId());
+            n.setApplicationId(app.getId());
+            n.setMessage(String.format(
+                "Time to follow up on your application at %s for %s",
+                app.getCompanyName(),
+                app.getJobTitle()
+            ));
+            n.setNotifyAt(notifyAtUTC);
+            n.setType(Notification.NotificationType.FOLLOW_UP);
+            n.setSent(false);
+            n.setRead(false);
+            n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
+            
+            // Save notification
+            notificationRepository.save(n);
+            
+            // Log success
+            System.out.println("✅ Follow-up reminder created:");
+            System.out.println("   Application ID: " + app.getId());
+            System.out.println("   Company: " + app.getCompanyName());
+            System.out.println("   Created on: " + createdAtInstant);
+            System.out.println("   Notify at (UTC): " + notifyAtUTC);
+            System.out.println("   Notify at (User TZ): " + notifyAtUserTz);
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error creating follow-up reminder for application " + 
+                (app != null ? app.getId() : "unknown") + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create follow-up reminder", e);
         }
-        
-        LocalDateTime notifyLocal = appliedLocal.plusDays(7);
-
-        LocalDateTime notifyAtUTC = notifyLocal.atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(ZoneOffset.UTC)
-            .toLocalDateTime();
-
-        System.out.println("📅 Application created on: " + appliedLocal);
-        System.out.println("🔔 Follow-up reminder will be sent at: " + notifyAtUTC);
-       
-        Notification n = new Notification();
-        n.setUserId(app.getUserId());
-        n.setApplicationId(app.getId());
-        n.setMessage("Time to follow up on your application at " + app.getCompanyName() + " for " + app.getJobTitle());
-        n.setNotifyAt(notifyAtUTC);
-        n.setType(Notification.NotificationType.FOLLOW_UP);
-        n.setSent(false);
-        n.setRead(false);
-        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-
-        notificationRepository.save(n);
-        System.out.println("✅ Follow-up reminder created for application: " + app.getCompanyName());
     }
 
     /**
      * Create interview reminder - 24 hours before interview
+     * @param interviewDateTimeStr ISO 8601 datetime string with timezone (e.g., "2025-10-28T21:50:00-04:00")
      */
     public Notification createInterviewReminder(String userId, String applicationId,
-                                          LocalDateTime interviewDate, String customMessage) {
-
+                                            String interviewDateTimeStr, String customMessage) {
         Application app = applicationRepository.findById(applicationId).orElse(null);
         
-        LocalDateTime interviewUTC = interviewDate.atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(ZoneOffset.UTC)
-            .toLocalDateTime();
+        // Parse the ISO 8601 string with timezone
+        ZonedDateTime interviewDateTime = ZonedDateTime.parse(interviewDateTimeStr);
         
-        LocalDateTime notifyAtUTC = interviewUTC.minusDays(1);
-
-        System.out.println("📅 Interview scheduled for: " + interviewDate);
-        System.out.println("🔔 Interview reminder will be sent at: " + notifyAtUTC);
+        // Convert to UTC for storage
+        ZonedDateTime interviewUtc = interviewDateTime.withZoneSameInstant(ZoneOffset.UTC);
+        LocalDateTime eventDateUtc = interviewUtc.toLocalDateTime();
+        LocalDateTime notifyAtUtc = interviewUtc.minusDays(1).toLocalDateTime();
         
-        String message = customMessage != null ? customMessage : 
-            String.format("Reminder: Interview tomorrow for %s at %s! Good luck!", 
+        // Validate notification time hasn't passed
+        if (notifyAtUtc.isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
+            throw new IllegalArgumentException(
+                "Interview date is too soon - notification time has already passed. " +
+                "Please schedule the interview at least 24 hours in advance."
+            );
+        }
+        
+        String message = (customMessage != null && !customMessage.isBlank())
+            ? customMessage
+            : String.format("Reminder: Interview tomorrow for %s at %s!",
                 app != null ? app.getJobTitle() : "position",
                 app != null ? app.getCompanyName() : "company");
-
+        
         Notification n = new Notification();
         n.setUserId(userId);
         n.setApplicationId(applicationId);
-        n.setMessage(message);
-        n.setNotifyAt(notifyAtUTC);
         n.setType(Notification.NotificationType.INTERVIEW);
+        n.setMessage(message);
+        n.setEventDate(eventDateUtc);
+        n.setNotifyAt(notifyAtUtc);
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-
-        Notification saved = notificationRepository.save(n);
-        System.out.println("✅ Interview reminder created (notify 24hrs before): " + saved.getNotifyAt());
-        return saved;
+        
+        return notificationRepository.save(n);
     }
 
     /**
-     * Create assessment deadline reminder - 24 hours before deadline
+     * Create assessment deadline reminder
+     * @param deadlineDateTimeStr ISO 8601 datetime string with timezone
      */
     public Notification createAssessmentDeadlineReminder(String userId, String applicationId,
-                                                    LocalDateTime assessmentDeadline, String customMessage) {
+                                            String deadlineDateTimeStr, String customMessage) {
         Application app = applicationRepository.findById(applicationId).orElse(null);
-
-        LocalDateTime assessmentUTC = assessmentDeadline.atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(ZoneOffset.UTC)
-            .toLocalDateTime();
         
-        LocalDateTime notifyAtUTC = assessmentUTC.minusDays(1);
-
-        System.out.println("📅 Assessment deadline scheduled for: " + assessmentDeadline);
-        System.out.println("🔔 Assessment reminder will be sent at: " + notifyAtUTC);
+        // Parse the ISO 8601 string with timezone
+        ZonedDateTime deadlineDateTime = ZonedDateTime.parse(deadlineDateTimeStr);
         
-        String message = customMessage != null ? customMessage : 
-            String.format("Reminder: Assessment deadline tomorrow for %s at %s!", 
+        // Convert to UTC for storage
+        ZonedDateTime deadlineUtc = deadlineDateTime.withZoneSameInstant(ZoneOffset.UTC);
+        LocalDateTime eventDateUtc = deadlineUtc.toLocalDateTime();
+        LocalDateTime notifyAtUtc = deadlineUtc.minusDays(1).toLocalDateTime();
+        
+        // Validate notification time hasn't passed
+        if (notifyAtUtc.isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
+            throw new IllegalArgumentException(
+                "Deadline is too soon - notification time has already passed. " +
+                "Please set a deadline at least 24 hours in advance."
+            );
+        }
+        
+        String message = (customMessage != null && !customMessage.isBlank())
+            ? customMessage
+            : String.format("Reminder: Complete assessment for %s at %s by tomorrow!",
                 app != null ? app.getJobTitle() : "position",
                 app != null ? app.getCompanyName() : "company");
-
+        
         Notification n = new Notification();
         n.setUserId(userId);
         n.setApplicationId(applicationId);
-        n.setMessage(message);
-        n.setNotifyAt(notifyAtUTC);
         n.setType(Notification.NotificationType.DEADLINE);
+        n.setMessage(message);
+        n.setEventDate(eventDateUtc);
+        n.setNotifyAt(notifyAtUtc);
         n.setSent(false);
         n.setRead(false);
         n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-
-        Notification saved = notificationRepository.save(n);
-        System.out.println("✅ Assessment reminder created (notify 24hrs before): " + saved.getNotifyAt());
-        return saved;
+        
+        return notificationRepository.save(n);
     }
 
     /**
-     * Generic notification creation
+     * Create custom notification
+     * @param notifyDateTimeStr ISO 8601 datetime string with timezone
      */
-    public Notification createNotification(Notification n) {
-        if (n.getCreatedAt() == null) {
-            n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        }
-
-        if (n.isSent() == false) {
-            n.setSent(false);
-        }
-
-        if (n.isRead() == false) {
-            n.setRead(false);
-        }
-
-        if (n.getType() == null) {
-            n.setType(Notification.NotificationType.CUSTOM);
-        }
-
-        System.out.println("📅 Generic notification scheduled for: " + n.getNotifyAt());
+    public Notification createCustomNotification(String userId, String applicationId,
+                                                String notifyDateTimeStr, String message) {
+        // Parse the ISO 8601 string with timezone
+        ZonedDateTime notifyDateTime = ZonedDateTime.parse(notifyDateTimeStr);
         
-        Notification saved = notificationRepository.save(n);
+        // Convert to UTC for storage
+        ZonedDateTime notifyUtc = notifyDateTime.withZoneSameInstant(ZoneOffset.UTC);
+        LocalDateTime notifyAtUtc = notifyUtc.toLocalDateTime();
         
-        System.out.println("✅ Notification created - will notify at: " + saved.getNotifyAt());
+        // Validate notification time hasn't passed
+        if (notifyAtUtc.isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
+            throw new IllegalArgumentException(
+                "Notification time has already passed. Please select a future time."
+            );
+        }
         
-        return saved;
+        Notification n = new Notification();
+        n.setUserId(userId);
+        n.setApplicationId(applicationId);
+        n.setType(Notification.NotificationType.CUSTOM);
+        n.setMessage(message);
+        n.setNotifyAt(notifyAtUtc);
+        n.setSent(false);
+        n.setRead(false);
+        n.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        
+        return notificationRepository.save(n);
     }
 
     /**
@@ -265,13 +346,16 @@ public class NotificationService {
 
                 // ✅ Apply user’s persistent preferences
                 if (pref.isEmailEnabled()) {
-                try {
-                    // Format message using UTC→local time conversion
-                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a");
-                    String localTime = n.getNotifyAt()
+                    try {
+                        // 🕒 Format time using user's stored timezone
+                        ZoneId userZone = getUserZone(n.getUserId());
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a");
+                        String localTime = n.getNotifyAt()
                             .atZone(ZoneOffset.UTC)
-                            .withZoneSameInstant(ZoneId.systemDefault())
+                            .withZoneSameInstant(userZone)
                             .format(fmt);
+
+
 
                     String html = "<p>" + n.getMessage() + "</p>"
                             + "<p><b>Scheduled for:</b> " + localTime + "</p>";

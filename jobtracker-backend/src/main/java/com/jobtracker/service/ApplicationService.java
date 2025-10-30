@@ -6,6 +6,7 @@ import com.jobtracker.repository.ApplicationRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -16,9 +17,9 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
 
     public Application createApplication(Application application) {
-        application.setCreatedAt(LocalDateTime.now());
-        application.setUpdatedAt(LocalDateTime.now());
-        application.setLastStatusChangeDate(LocalDateTime.now());
+        application.setCreatedAt(Instant.now());
+        application.setUpdatedAt(Instant.now());
+        application.setLastStatusChangeDate(Instant.now());
         return applicationRepository.save(application);
     }
 
@@ -28,13 +29,13 @@ public class ApplicationService {
 
         // Track status changes
         if (!existing.getStatus().equals(updatedApplication.getStatus())) {
-            updatedApplication.setLastStatusChangeDate(LocalDateTime.now());
+            updatedApplication.setLastStatusChangeDate(Instant.now());
         }
 
         updatedApplication.setId(existing.getId());
         updatedApplication.setUserId(userId);
         updatedApplication.setCreatedAt(existing.getCreatedAt());
-        updatedApplication.setUpdatedAt(LocalDateTime.now());
+        updatedApplication.setUpdatedAt(Instant.now());
         
         return applicationRepository.save(updatedApplication);
     }
@@ -76,7 +77,7 @@ public class ApplicationService {
             app.setCoverLetterId(null);
         }
         
-        app.setUpdatedAt(LocalDateTime.now());
+        app.setUpdatedAt(Instant.now());
         applicationRepository.save(app);
     }
 }

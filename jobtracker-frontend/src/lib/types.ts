@@ -23,7 +23,8 @@ export interface Application {
     jobLink?: string;
     recruiterContact?: string;
     status: ApplicationStatus;
-    salary?: string;
+    salary?: number;
+    salaryText?: string;
     notes?: string;
     resumeId?: string;
     coverLetterId?: string;

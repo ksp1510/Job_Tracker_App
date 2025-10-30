@@ -166,7 +166,24 @@ export default function JobSearchPage() {
         jobDescription: job.description,
         jobLink: job.applyUrl,
         status: 'APPLIED' as any,
-        salary: job.salary || job.salaryRange,
+        salary: (() => {
+          const raw = job.salary || job.salaryRange;
+          if (!raw) return undefined;
+
+          // Remove all non-numeric, non-dash characters
+          const clean = String(raw).replace(/[^0-9.-]/g, "").trim();
+
+          // Handle ranges like "120000-150000"
+          if (clean.includes("-")) {
+            const [min, max] = clean.split("-").map(Number);
+            return !isNaN(min) && !isNaN(max) ? (min + max) / 2 : undefined;
+          }
+
+          // Single numeric salary
+          const num = Number(clean);
+          return isNaN(num) ? undefined : num;
+        })(),
+        salaryText: job.salary || job.salaryRange,
         appliedDate: new Date().toISOString().split('T')[0],
         notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
         externalJobId: job.id,

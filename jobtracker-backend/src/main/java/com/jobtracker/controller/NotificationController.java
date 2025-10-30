@@ -22,13 +22,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.time.Duration;
 
 @RestController
@@ -149,37 +144,17 @@ public class NotificationController {
         app.setInterviewDate(request.getInterviewDate());
         applicationService.updateApplication(app.getId(), userId, app);
 
-        ZonedDateTime interviewLocal = request.getInterviewDate().atZone(ZoneId.systemDefault());
-        ZonedDateTime interviewUtc = interviewLocal.withZoneSameInstant(ZoneOffset.UTC);
-        LocalDateTime notifyAt = interviewUtc.minusDays(1).toLocalDateTime();
-
-        // Avoid duplicates
-        Optional<Notification> existing = repository.findByApplicationIdAndType(
-                app.getId(), Notification.NotificationType.INTERVIEW);
-        if (existing.isPresent()) {
-            Notification n = existing.get();
-            n.setNotifyAt(notifyAt);
-            n.setMessage("Reminder updated for interview at " + app.getCompanyName());
-            repository.save(n);
-            return ResponseEntity.ok(n);
+        try {
+            Notification notification = service.createInterviewReminder(
+                userId,
+                request.getApplicationId(),
+                request.getInterviewDate(),
+                request.getCustomMessage()
+            );
+            return ResponseEntity.ok(notification);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         }
-
-        Notification notification = new Notification();
-        notification.setUserId(userId);
-        notification.setApplicationId(request.getApplicationId());
-        notification.setMessage(request.getCustomMessage() != null ?
-                request.getCustomMessage() :
-                "Reminder: Interview tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAt);
-        notification.setEventDate(request.getInterviewDate());
-        notification.setType(Notification.NotificationType.INTERVIEW);
-        notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        notification.setRead(false);
-        notification.setSent(false);
-
-        Notification saved = repository.save(notification);
-        System.out.println("✅ Interview reminder created - will notify at (UTC): " + saved.getNotifyAt());
-        return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/deadline-reminder")
@@ -197,36 +172,17 @@ public class NotificationController {
         app.setAssessmentDeadline(request.getAssessmentDeadline());
         applicationService.updateApplication(app.getId(), userId, app);
 
-        ZonedDateTime deadlineLocal = request.getAssessmentDeadline().atZone(ZoneId.systemDefault());
-        ZonedDateTime deadlineUtc = deadlineLocal.withZoneSameInstant(ZoneOffset.UTC);
-        LocalDateTime notifyAt = deadlineUtc.minusDays(1).toLocalDateTime();
-
-        Optional<Notification> existing = repository.findByApplicationIdAndType(
-                app.getId(), Notification.NotificationType.DEADLINE);
-        if (existing.isPresent()) {
-            Notification n = existing.get();
-            n.setNotifyAt(notifyAt);
-            n.setMessage("Reminder updated for assessment deadline at " + app.getCompanyName());
-            repository.save(n);
-            return ResponseEntity.ok(n);
-        }
-
-        Notification notification = new Notification();
-        notification.setUserId(userId);
-        notification.setApplicationId(request.getApplicationId());
-        notification.setMessage(request.getCustomMessage() != null ?
-                request.getCustomMessage() :
-                "Reminder: Assessment deadline tomorrow for " + app.getJobTitle() + " at " + app.getCompanyName() + "!");
-        notification.setNotifyAt(notifyAt);
-        notification.setEventDate(request.getAssessmentDeadline());
-        notification.setType(Notification.NotificationType.DEADLINE);
-        notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        notification.setRead(false);
-        notification.setSent(false);
-
-        Notification saved = repository.save(notification);
-        System.out.println("✅ Deadline reminder created - will notify at (UTC): " + saved.getNotifyAt());
-        return ResponseEntity.ok(saved);
+        try {
+        Notification notification = service.createAssessmentDeadlineReminder(
+            userId,
+            request.getApplicationId(),
+            request.getAssessmentDeadline(),
+            request.getCustomMessage()
+        );
+        return ResponseEntity.ok(notification);
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest().build();
+    }
     }
 
 
@@ -343,7 +299,7 @@ public class NotificationController {
         private String applicationId;
         
         @NotNull(message = "Interview date is required")
-        private LocalDateTime interviewDate;
+        private String interviewDate;
         
         private String customMessage;
     }
@@ -354,7 +310,7 @@ public class NotificationController {
         private String applicationId;
         
         @NotNull(message = "Assessment deadline is required")
-        private LocalDateTime assessmentDeadline;
+        private String assessmentDeadline;
         
         private String customMessage;
     }
