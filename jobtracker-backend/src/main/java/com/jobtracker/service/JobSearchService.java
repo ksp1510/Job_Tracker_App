@@ -194,15 +194,22 @@ public class JobSearchService {
         boolean hasLocation = location != null && !location.isBlank();
 
         if (hasQuery && hasLocation) {
+
+            String queryPattern = "(?i).*" + Pattern.quote(query.trim()) + ".*";
+            String locationPattern = "(?i).*" + Pattern.quote(location.trim()) + ".*";
+
             return jobListingRepository.findByIsActiveTrueAndTitleRegexAndLocationRegex(
-            ".*" + Pattern.quote(query.trim()) + ".*",
-            ".*" + Pattern.quote(location.trim()) + ".*",
+            queryPattern,
+            locationPattern,
             pageable);
         }
     
         if (hasQuery) {
+
+            String queryPattern = "(?i).*" + Pattern.quote(query.trim()) + ".*";
+            
             return jobListingRepository.findByIsActiveTrueAndTitleRegex(
-                ".*" + Pattern.quote(query.trim()) + ".*",
+                queryPattern,
                 pageable);
         }
         
