@@ -1,43 +1,62 @@
-server:
-  port: 8080
-  ssl:
-    enabled: ${SSL_ENABLED:false}
-    key-store: ${SSL_KEY_STORE:}
-    key-store-password: ${SSL_KEY_STORE_PASSWORD:}
-    key-store-type: ${SSL_KEY_STORE_TYPE:PKCS12}
-
 spring:
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+  application:
+    name: job-tracker-app
+
+app:
+  cors:
+    allowed-origins: []
 
   data:
     mongodb:
-      uri: ${MONGODB_URI:}
-      database: JobTrackerApp
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DB}
 
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+aws:
+  region: ${AWS_REGION}
+  credentials:
+    accessKey: ${AWS_ACCESS_KEY_ID}
+    secretKey: ${AWS_SECRET_ACCESS_KEY}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+  ses:
+    fromEmail: ${AWS_SES_FROM_EMAIL}
 
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:}
-            client-secret: ${GOOGLE_CLIENT_SECRET:}
-            scope:
-              - email
-              - profile
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-        provider:
-          google:
-            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
-            token-uri: https://oauth2.googleapis.com/token
-            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-            user-name-attribute: sub
+auth0:
+  domain: ${AUTH0_DOMAIN}
+  clientId: ${AUTH0_CLIENT_ID}
+  clientSecret: ${AUTH0_CLIENT_SECRET}
+  audience: https://jobtracker-api
 
-jwt:
-  secret: ${JWT_SECRET:}
-  expiration: 3600000
+jobs:
+  rapidapiKey: ${RAPIDAPI_KEY}
+  seedEnabled: ${JOB_SEED_ENABLED}
+
+server:
+  port: 8080
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  data:
+    mongodb:
+      auto-index-creation: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+    com.jobtracker: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: WARN
+    com.jobtracker: INFO

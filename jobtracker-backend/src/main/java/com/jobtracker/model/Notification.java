@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Document(collection = "notifications")
@@ -19,13 +19,13 @@ public class Notification {
     private String applicationId;    // optional link to application
     private String message;          // "Follow up on Google interview"
 
-    private LocalDateTime eventDate;
+    private Instant eventDate;
     
     @Indexed
-    private LocalDateTime notifyAt;  // when to trigger
+    private Instant notifyAt;  // when to trigger
     private boolean sent = false;    // mark after delivery
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Indexed
     private boolean read = false;    // mark after reading

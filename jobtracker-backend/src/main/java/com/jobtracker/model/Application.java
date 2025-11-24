@@ -7,9 +7,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.InstantDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.InstantSerializer;
 import com.jobtracker.util.SalaryDeserializer;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -17,7 +14,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Instant;
-import java.time.LocalDate;
 
 @Data
 @Document(collection = "applications")
@@ -26,7 +22,6 @@ public class Application {
     @Id
     private String id;
 
-    @NotBlank(message = "User ID is required")
     private String userId;          // reference to User
     
     @NotBlank(message = "Company Name is required")

@@ -9,7 +9,7 @@ import ReactQueryProvider from '@/components/providers/ReactQueryProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'JobTracker - Manage Your Job Applications',
+  title: 'CareerTrackr - Manage Your Job Applications',
   description: 'Track and manage your job applications efficiently',
 };
 

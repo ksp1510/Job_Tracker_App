@@ -1,38 +1,71 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { jwtDecode } from 'jwt-decode';
+import { useAuth } from '@/context/AuthContext';
 
-export default function OAuth2CallbackPage() {
+type IdTokenPayload = {
+  email: string;
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+}
+
+export default function Auth0CallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { completeGoogleLogin } = useAuth();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const firstName = searchParams.get('firstName');
-    const lastName = searchParams.get('lastName');
+    if (typeof window === 'undefined') return;
 
-    if (token) {
-      // SECURITY FIX: Always use secure cookies
-      Cookies.set('token', token, {
-        expires: 7,
-        secure: true, // Always require HTTPS
-        sameSite: 'strict',
-      });
+    const hash = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash;
 
-      toast.success(`Welcome back, ${firstName || 'User'}!`);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const idToken = params.get('id_token');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
 
-      // Redirect to dashboard
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 500);
-    } else {
-      toast.error('Authentication failed. Please try again.');
-      router.push('/auth/login');
+    if (error) {
+      console.error('Auth0 error:', error, errorDescription);
+      toast.error(errorDescription || 'Authentication failed');
+      router.replace('/auth/login');
+      return;
     }
-  }, [searchParams, router]);
+
+    if (!accessToken || !idToken) {
+      toast.error('Authentication failed - missing token');
+      router.replace('/auth/login');
+      return;
+    }
+
+    try {
+      const payload = jwtDecode<IdTokenPayload>(idToken);
+
+      const profile = {
+        email: payload.email,
+        firstName:
+          payload.given_name ??
+          (payload.name ? payload.name.split(' ')[0] : 'User'),
+        lastName:
+          payload.family_name ??
+          (payload.name && payload.name.split(' ').length > 1
+            ? payload.name.split(' ').slice(1).join(' ')
+            : ''),
+      };
+
+      // AuthContext handles setting cookie + redirect
+      completeGoogleLogin(accessToken, profile);
+    } catch (err) {
+      console.error('Failed to decode ID token', err);
+      toast.error('Authentication failed.');
+      router.replace('/auth/login');
+    }
+  }, [router, completeGoogleLogin]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

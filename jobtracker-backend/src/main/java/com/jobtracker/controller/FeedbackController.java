@@ -2,7 +2,7 @@ package com.jobtracker.controller;
 
 import com.jobtracker.model.Feedback;
 import com.jobtracker.service.FeedbackService;
-import com.jobtracker.config.JwtUtil;
+import com.jobtracker.util.UserContext;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +15,9 @@ import java.util.List;
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
-    private final JwtUtil jwtUtil;
 
-    public FeedbackController(FeedbackService feedbackService, JwtUtil jwtUtil) {
+    public FeedbackController(FeedbackService feedbackService) {
         this.feedbackService = feedbackService;
-        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -33,7 +31,7 @@ public class FeedbackController {
         // If user is authenticated, extract userId
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.replace("Bearer ", "");
-            String userId = jwtUtil.getUserId(token);
+            String userId = UserContext.getUserId();
             feedback.setUserId(userId);
         }
 
@@ -48,7 +46,7 @@ public class FeedbackController {
     public ResponseEntity<List<Feedback>> getMyFeedback(
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(feedbackService.getFeedbackByUserId(userId));
     }
 

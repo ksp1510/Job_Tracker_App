@@ -1,10 +1,10 @@
 package com.jobtracker.controller;
 
-import com.jobtracker.config.JwtUtil;
 import com.jobtracker.model.Application;
 import com.jobtracker.model.Notification;
 import com.jobtracker.model.NotificationPreference;
 import com.jobtracker.model.User;
+import com.jobtracker.util.UserContext;
 import com.jobtracker.repository.NotificationPreferenceRepository;
 import com.jobtracker.repository.NotificationRepository;
 import com.jobtracker.repository.UserRepository;
@@ -21,10 +21,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.time.Duration;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/notifications")
@@ -34,19 +34,16 @@ public class NotificationController {
     private final NotificationRepository repository;
     private final NotificationPreferenceRepository prefRepo;
     private final ApplicationService applicationService;
-    private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
     public NotificationController(NotificationService service, 
                                 NotificationRepository repository,
                                 ApplicationService applicationService,
-                                JwtUtil jwtUtil,
                                 NotificationPreferenceRepository prefRepo,
                                 UserRepository userRepository) {
         this.service = service;
         this.repository = repository;
         this.applicationService = applicationService;
-        this.jwtUtil = jwtUtil;
         this.prefRepo = prefRepo;
         this.userRepository = userRepository;
     }
@@ -57,9 +54,8 @@ public class NotificationController {
      * Get all notifications for logged-in user - FIXED: Filter by preferences
      */
     @GetMapping
-    public ResponseEntity<List<Notification>> getUserNotifications(
-            @RequestHeader("Authorization") String authHeader) {
-        String userId = extractUserId(authHeader);
+    public ResponseEntity<List<Notification>> getUserNotifications() {
+        String userId = UserContext.getUserId();
         
         return ResponseEntity.ok(service.getUserNotifications(userId));
     }
@@ -68,17 +64,16 @@ public class NotificationController {
      * Get unread notifications for logged-in user - FIXED: Filter by preferences and time
      */
     @GetMapping("/unread")
-    public ResponseEntity<List<Notification>> getUnreadNotifications(
-            @RequestHeader("Authorization") String authHeader) {
-        String userId = extractUserId(authHeader);
+    public ResponseEntity<List<Notification>> getUnreadNotifications() {
+        String userId = UserContext.getUserId();
         
-        // FIXED: Only return notifications that are due (notifyAt is in the past)
-        LocalDateTime now = LocalDateTime.now();
+        // ✅ FIXED - Use Instant instead of LocalDateTime
+        Instant now = Instant.now();
         List<Notification> allUnread = repository.findByUserIdAndReadFalseOrderByNotifyAtDesc(userId);
         
         // Filter to only show notifications that should be displayed now
         List<Notification> dueNotifications = allUnread.stream()
-                .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().isEqual(now))
+                .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().equals(now))
                 .toList();
         
         System.out.println("📱 Returning " + dueNotifications.size() + " due notifications out of " + allUnread.size() + " total unread");
@@ -90,9 +85,8 @@ public class NotificationController {
      * Mark notification as read
      */
     @PatchMapping("/{id}/read")
-    public ResponseEntity<Notification> markAsRead(@PathVariable String id,
-                                                 @RequestHeader("Authorization") String authHeader) {
-        String userId = extractUserId(authHeader);
+    public ResponseEntity<Notification> markAsRead(@PathVariable String id) {
+        String userId = UserContext.getUserId();
         Notification n = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         
@@ -109,9 +103,8 @@ public class NotificationController {
      * Delete notification
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNotification(@PathVariable String id,
-                                                  @RequestHeader("Authorization") String authHeader) {
-        String userId = extractUserId(authHeader);
+    public ResponseEntity<Void> deleteNotification(@PathVariable String id) {
+        String userId = UserContext.getUserId();
         Notification n = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         
@@ -131,10 +124,15 @@ public class NotificationController {
      */
     @PostMapping("/interview-reminder")
     public ResponseEntity<Notification> createInterviewReminder(
-            @Valid @RequestBody InterviewReminderRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody InterviewReminderRequest request) {
 
-        String userId = extractUserId(authHeader);
+        System.out.println("🔵 createInterviewReminder method called");
+        System.out.println("📥 Request received:");
+        System.out.println("   ApplicationId: " + request.getApplicationId());
+        System.out.println("   InterviewDate: " + request.getInterviewDate());
+        System.out.println("   CustomMessage: " + request.getCustomMessage());
+
+        String userId = UserContext.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -159,10 +157,15 @@ public class NotificationController {
 
     @PostMapping("/deadline-reminder")
     public ResponseEntity<Notification> createDeadlineReminder(
-            @Valid @RequestBody DeadlineReminderRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody DeadlineReminderRequest request) {
 
-        String userId = extractUserId(authHeader);
+        System.out.println("🔵 createDeadlineReminder method called");
+        System.out.println("📥 Request received:");
+        System.out.println("   ApplicationId: " + request.getApplicationId());
+        System.out.println("   AssessmentDeadline: " + request.getAssessmentDeadline());
+        System.out.println("   CustomMessage: " + request.getCustomMessage());
+
+        String userId = UserContext.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -191,10 +194,16 @@ public class NotificationController {
      */
     @PostMapping("/custom")
     public ResponseEntity<Notification> createCustomNotification(
-            @Valid @RequestBody CustomNotificationRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody CustomNotificationRequest request) {
         
-        String userId = extractUserId(authHeader);
+        System.out.println("🔵 createCustomNotification method called");
+        System.out.println("📥 Request received:");
+        System.out.println("   ApplicationId: " + request.getApplicationId());
+        System.out.println("   NotifyAt: " + request.getNotifyAt());
+        System.out.println("   Message: " + request.getMessage());
+        System.out.println("   Type: " + request.getType());
+
+        String userId = UserContext.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
@@ -206,7 +215,7 @@ public class NotificationController {
         n.setMessage(request.getMessage());
         n.setNotifyAt(request.getNotifyAt()); // User-specified time
         n.setType(request.getType() != null ? request.getType() : Notification.NotificationType.CUSTOM);
-        n.setCreatedAt(LocalDateTime.now());
+        n.setCreatedAt(Instant.now());  // ✅ Changed from LocalDateTime.now()
         n.setRead(false);
         n.setSent(false);
         
@@ -220,24 +229,23 @@ public class NotificationController {
     // ================ NOTIFICATION PREFERENCES ================
 
     @GetMapping("/preferences")
-    public ResponseEntity<NotificationPreference> getPreferences(@RequestHeader("Authorization") String authHeader) {
-        String userId = extractUserId(authHeader);
+    public ResponseEntity<NotificationPreference> getPreferences() {
+        String userId = UserContext.getUserId();
         NotificationPreference pref = prefRepo.findByUserId(userId)
-            .orElseGet(() -> prefRepo.save(new NotificationPreference(userId, true, true, LocalDateTime.now())));
+            .orElseGet(() -> prefRepo.save(new NotificationPreference(userId, true, true, Instant.now())));  // ✅ Changed
         return ResponseEntity.ok(pref);
     }
 
     @PutMapping("/preferences")
     public ResponseEntity<NotificationPreference> updatePreferences(
-            @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, Boolean> req) {
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         NotificationPreference pref = prefRepo.findByUserId(userId)
             .orElseGet(() -> new NotificationPreference());
         pref.setUserId(userId);
         pref.setEmailEnabled(req.getOrDefault("emailEnabled", true));
-        pref.setInAppEnabled(true);  // enforce
-        pref.setUpdatedAt(LocalDateTime.now());
+        pref.setInAppEnabled(true);
+        pref.setUpdatedAt(Instant.now());  // ✅ Changed from LocalDateTime.now()
         prefRepo.save(pref);
         return ResponseEntity.ok(pref);
     }
@@ -249,10 +257,9 @@ public class NotificationController {
      * SSE endpoint for live notification updates - FIXED: Filter by preferences
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<List<Notification>>> streamNotifications(
-            @RequestHeader("Authorization") String authHeader) {
+    public Flux<ServerSentEvent<List<Notification>>> streamNotifications() {
         
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         
         return Flux.interval(Duration.ofSeconds(10)) // check every 10 sec
                 .map(seq -> {
@@ -269,11 +276,11 @@ public class NotificationController {
                     }
                     
                     // FIXED: Only return notifications that are due
-                    LocalDateTime now = LocalDateTime.now();
+                    Instant now = Instant.now();
                     List<Notification> unread = repository.findByUserIdAndReadFalse(userId);
                     
                     List<Notification> dueNotifications = unread.stream()
-                            .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().isEqual(now))
+                            .filter(n -> n.getNotifyAt().isBefore(now) || n.getNotifyAt().equals(now))
                             .toList();
                     
                     return ServerSentEvent.<List<Notification>>builder()
@@ -282,13 +289,6 @@ public class NotificationController {
                             .data(dueNotifications)
                             .build();
                 });
-    }
-
-    // ================ HELPER METHODS ================
-
-    private String extractUserId(String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        return jwtUtil.getUserId(token);
     }
 
     // ================ DTOs ================
@@ -323,7 +323,7 @@ public class NotificationController {
         private String message;
         
         @NotNull(message = "Notify date/time is required")
-        private LocalDateTime notifyAt;
+        private Instant notifyAt;
         
         private Notification.NotificationType type;
     }

@@ -1,7 +1,5 @@
 package com.jobtracker.service;
 
-import java.time.format.DateTimeFormatter;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,9 +18,6 @@ public class SesService {
     public SesService(SesClient sesClient) {
         this.sesClient = sesClient;
     }
-
-    private static final DateTimeFormatter EMAIL_FORMATTER =
-        DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a");
 
     public void sendHtmlEmail(String toAddress, String subject, String htmlBody) {
         System.out.println("📧 ========== EMAIL SENDING DEBUG ==========");

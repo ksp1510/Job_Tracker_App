@@ -5,6 +5,7 @@ import com.jobtracker.model.Notification.NotificationType;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findByUserIdAndReadFalse(String userId);
     
     // Find notifications that should be sent now
-    List<Notification> findBySentFalseAndNotifyAtBefore(LocalDateTime dateTime);
+    List<Notification> findBySentFalseAndNotifyAtBefore(Instant nowUTC);
     
     // Check if follow-up reminder already exists
     boolean existsByApplicationIdAndTypeAndCreatedAtAfter(
@@ -32,4 +33,5 @@ public interface NotificationRepository extends MongoRepository<Notification, St
         NotificationType type, 
         LocalDateTime createdAfter
     );
+
 }

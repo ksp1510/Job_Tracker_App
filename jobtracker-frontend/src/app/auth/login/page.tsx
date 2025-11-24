@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, beginGoogleLogin } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,11 +27,29 @@ export default function LoginPage() {
     }
   };
 
+  /*
+  const handleGoogleLogin = () => {
+    const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN || 'dev-ef81elo8soa00i4u.ca.auth0.com';
+    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || 'CFIx0o9sJIqW2y9AGNnbzNNS8NXeJWFZ';
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://jobtracker-api/';
+
+    const authUrl = `https://${auth0Domain}/authorize?` +
+      `response_type=token&` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `scope=openid profile email&` +
+      `audience=${encodeURIComponent(audience)}&` +
+      `connection=google-oauth2`;
+
+    window.location.href = authUrl;
+  };*/
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-bold text-indigo-600 mb-2">JobTracker</h1>
+          <h1 className="text-center text-3xl font-bold text-indigo-600 mb-2">CareerTrackr</h1>
           <h2 className="text-center text-2xl font-bold text-gray-900">
             Sign in to your account
           </h2>
@@ -76,8 +94,8 @@ export default function LoginPage() {
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters',
+                      value: 8,
+                      message: 'Password must be at least 8 characters',
                     },
                   })}
                   type={showPassword ? 'text' : 'password'}
@@ -139,8 +157,9 @@ export default function LoginPage() {
 
           {/* Google Sign In Button */}
           <div>
-            <a
-              href={`${process.env.NEXT_PUBLIC_API_URL}/oauth2/authorization/google`}
+            <button
+            type="button"
+              onClick={beginGoogleLogin}
               className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -162,7 +181,7 @@ export default function LoginPage() {
                 />
               </svg>
               Sign in with Google
-            </a>
+            </button>
           </div>
 
           <div className="text-center">

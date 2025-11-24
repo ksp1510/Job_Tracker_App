@@ -45,7 +45,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-indigo-600">JobTracker</h1>
+              <h1 className="text-xl font-bold text-indigo-600">CareerTrackr</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Link
@@ -76,7 +76,7 @@ export default function HomePage() {
                   <span className="block text-indigo-600 xl:inline">Job Search Journey</span>
                 </h1>
                 <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  Stay organized and never miss an opportunity. JobTracker helps you manage job applications, 
+                  Stay organized and never miss an opportunity. CareerTrackr helps you manage job applications, 
                   track interview schedules, and set smart reminders to land your dream job.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
@@ -194,7 +194,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-              Why Choose JobTracker?
+              Why Choose CareerTrackr?
             </h2>
           </div>
 
@@ -232,7 +232,7 @@ export default function HomePage() {
                   Trusted by Thousands
                 </h3>
                 <p className="mt-2 text-base text-gray-500">
-                  Join thousands of job seekers who have found success with JobTracker.
+                  Join thousands of job seekers who have found success with CareerTrackr.
                 </p>
               </div>
             </div>
@@ -248,7 +248,7 @@ export default function HomePage() {
             <span className="block">Start tracking your applications today.</span>
           </h2>
           <p className="mt-4 text-lg leading-6 text-indigo-200">
-            Join thousands of job seekers who have streamlined their search process with JobTracker.
+            Join thousands of job seekers who have streamlined their search process with CareerTrackr.
           </p>
           <Link
             href="/auth/register"
@@ -334,7 +334,7 @@ export default function HomePage() {
           </div>
           <div className="mt-8 border-t border-gray-200 pt-8">
             <p className="text-base text-gray-400 text-center">
-              &copy; 2024 JobTracker. All rights reserved.
+              &copy; 2024 CareerTrackr. All rights reserved.
             </p>
           </div>
         </div>

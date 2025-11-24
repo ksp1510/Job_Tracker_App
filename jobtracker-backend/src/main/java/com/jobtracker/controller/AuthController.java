@@ -2,24 +2,27 @@ package com.jobtracker.controller;
 
 import com.jobtracker.model.User;
 import com.jobtracker.repository.UserRepository;
-import com.jobtracker.config.JwtUtil;
 import com.jobtracker.config.RateLimitService;
+import com.jobtracker.service.Auth0Service;
+import com.jobtracker.service.Auth0Service.Auth0LoginResponse;
+import com.jobtracker.service.Auth0Service.Auth0User;
+import com.jobtracker.service.Auth0Service.Auth0UserInfo;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
+
 import java.util.Optional;
 
-import com.jobtracker.exception.DuplicateEmailException;
-
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -28,10 +31,7 @@ public class AuthController {
     private UserRepository userRepository;
 
     @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private Auth0Service auth0Service;
 
     @Autowired
     private RateLimitService rateLimitService;
@@ -49,25 +49,59 @@ public class AuthController {
                     .body("Too many registration attempts. Please try again in " + waitForRefill + " seconds");
         }
 
-        // check if email already exists
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new DuplicateEmailException("Email already registered");
-        }
-        // SECURITY FIX: Validate password strength
-        validatePassword(request.getPassword());
+        try {
 
-        User user = new User();
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // hash password
-        user.setAuthProvider("LOCAL");
-        return ResponseEntity.ok(userRepository.save(user));
+            // Check if email already exists in MongoDB
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ErrorResponse("This Email is already registered"));
+            }
+
+            // Validate password strength
+            validatePassword(request.getPassword());
+
+            // Create user in Auth0
+            Auth0User auth0User = auth0Service.createUser(
+                request.getFirstName(),
+                request.getLastName(),
+                request.getEmail(),
+                request.getPassword()
+            );
+
+            // Create user in MongoDB with Auth0 user ID
+            User user = new User();
+            user.setUserId(auth0User.getUserId());
+            user.setFirstName(request.getFirstName());
+            user.setLastName(request.getLastName());
+            user.setEmail(request.getEmail());
+            user.setPasswordHash(null);
+            user.setAuthProvider("AUTH0");
+
+            User savedUser = userRepository.save(user);
+
+            log.info("User registered successfully: {}", request.getEmail());
+
+            return ResponseEntity.ok(new RegisterResponse(
+                savedUser.getUserId(),
+                savedUser.getFirstName(),
+                savedUser.getLastName(),
+                savedUser.getEmail(),
+                "Registration successful. Please check your email for confirmation."
+            ));
+        } catch (com.jobtracker.exception.AuthenticationException e) {
+            log.error("Auth0 registration error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("Auth0 registration error: " + e.getMessage()));
+        } catch (Exception e) {
+            log.error("Registration error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Registration failed. Please try again later."));
+        }
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-        // SECURITY: Rate limiting - 5 login attempts per minute per IP
+        // Rate limiting - 5 login attempts per minute per ip
         String clientIp = getClientIP(httpRequest);
         Bucket bucket = rateLimitService.resolveBucketForLogin(clientIp);
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
@@ -78,13 +112,72 @@ public class AuthController {
                     .body("Too many login attempts. Please try again in " + waitForRefill + " seconds");
         }
 
-        Optional<User> user = userRepository.findByEmail(request.getEmail());
-        if (user.isPresent() && passwordEncoder.matches(request.getPassword(), user.get().getPasswordHash())) {
-            String token = jwtUtil.generateToken(user.get().getUserId());
-            // SECURITY FIX: Removed logging of tokens and PII
-            return ResponseEntity.ok(new LoginResponse(token, user.get().getFirstName(), user.get().getLastName()));
+        try {
+            Auth0LoginResponse auth0LoginResponse = auth0Service.authenticate(
+                request.getEmail(),
+                request.getPassword()
+            );
+
+            Auth0UserInfo userInfo = auth0LoginResponse.getUserInfo();
+
+            // Sync/Update user in MongoDB
+            Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+            User user;
+
+            if (existingUser.isPresent()) {
+                user = existingUser.get();
+                // Update user ID if it changed
+                if (!user.getUserId().equals(userInfo.getSub())) {
+                    user.setUserId(userInfo.getSub());
+                    user = userRepository.save(user);
+                }
+            } else {
+                // User logged in via Auth0 but not in MongoDB
+                // Create user in MongoDB
+                user = new User();
+                user.setUserId(userInfo.getSub());
+                user.setFirstName(userInfo.getGivenName() != null ? userInfo.getGivenName() : "");
+                user.setLastName(userInfo.getFamilyName() != null ? userInfo.getFamilyName() : "");
+                user.setEmail(userInfo.getEmail());
+                user.setPasswordHash(null);
+                user.setAuthProvider("AUTH0");
+                user = userRepository.save(user);
+            }
+
+            log.info("User logged in successfully: {}", request.getEmail());
+
+            // Return Auth0 access token
+            return ResponseEntity.ok(new LoginResponse(
+                auth0LoginResponse.getAccessToken(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail()
+            ));
+        
+        } catch (com.jobtracker.exception.AuthenticationException e) {
+            log.error("Auth0 login error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Invalid email or password"));
+        } catch (Exception e) {
+            log.error("Auth0 login error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Login failed. Please try again later."));
         }
-        throw new RuntimeException("Invalid credentials");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+           auth0Service.sendPasswordResetEmail(request.getEmail());
+           
+           return ResponseEntity.ok(new MessageResponse(
+            "Password reset email sent successfully"));
+
+        } catch (Exception e) {
+            log.error("Password reset email error: {}", e);
+            return ResponseEntity.ok(new MessageResponse(
+                "If an account exists with this email, a password reset email has been sent."));
+        }   
     }
 
     /**
@@ -124,11 +217,14 @@ public class AuthController {
     static class RegisterRequest {
         @NotBlank(message = "First Name is required")
         private String firstName;
+
         @NotBlank(message = "Last Name is required")
         private String lastName;
+        
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email format")
         private String email;
+        
         @NotBlank(message = "Password is required")
         private String password;
     }
@@ -138,6 +234,7 @@ public class AuthController {
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email format")
         private String email;
+
         @NotBlank(message = "Password is required")
         private String password;
     }
@@ -147,5 +244,32 @@ public class AuthController {
         private final String token;
         private final String firstName;
         private final String lastName;
+        private final String email;
+    }
+
+    @Data
+    static class ForgotPasswordRequest {
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
+        private String email;
+    }
+
+    @Data
+    static class RegisterResponse {
+        private final String userId;
+        private final String firstName;
+        private final String lastName;
+        private final String email;
+        private final String message;
+    }
+
+    @Data
+    static class ErrorResponse {
+        private final String message;
+    }
+
+    @Data
+    static class MessageResponse {
+        private final String message;
     }
 }

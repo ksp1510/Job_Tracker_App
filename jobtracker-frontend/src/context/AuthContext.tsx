@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/context/AuthContext.tsx
 'use client';
@@ -6,10 +7,10 @@ import { createContext, useContext, useEffect, useState, ReactNode, JSX } from '
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/api';
-import { AuthResponse } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
 import { LoginRequest, RegisterRequest, User } from '@/lib/types';
 import toast from 'react-hot-toast';
+import { jwtDecode } from 'jwt-decode';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,9 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<void>;
   getCurrentUser: () => Promise<User>;
   logout: () => void;
+  beginGoogleLogin: () => void;
+  completeGoogleLogin: (accessToken: string,
+    profile: { email: string; firstName: string; lastName: string }) => void;
   isAuthenticated: boolean;
 }
 
@@ -31,11 +35,7 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
+export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -45,7 +45,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     queryKey: ['currentUser'],
     queryFn: apiClient.getCurrentUser,
     enabled: !!Cookies.get('token') && user === null,
+    retry: false,
   });
+
   useEffect(() => {
     if (profile) setUser(profile);
   }, [profile]);
@@ -59,21 +61,29 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   
   // On mount decode token to set minimal user info
   useEffect(() => {
-    const token = Cookies.get('token');
-    if (token) {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      setUser((prev) => ({
-        userId: payload.sub,
-        firstName: payload.firstName ?? prev?.firstName ?? '',
-        lastName: payload.lastName ?? prev?.lastName ?? '',
-        email: payload.email ?? '',
-        role: payload.role ?? 'USER',
-        notificationEnabled: true,
-        emailNotificationsEnabled: true,
-        inAppNotificationsEnabled: true,
-      }));
-    }
-    setIsLoading(false);
+    const initializeAuth = async () => {
+      const token = Cookies.get('token');
+      if (token) {
+        try {
+          const payload: any = jwtDecode(token);
+          setUser({
+            userId: payload.sub || '',
+            firstName: payload.firstName || '',
+            lastName: payload.lastName || '',
+            email: payload.email || '',
+            role: payload.role || 'USER',
+            notificationEnabled: true,
+            emailNotificationsEnabled: true,
+            inAppNotificationsEnabled: true,
+          });
+        } catch (error) {
+          console.error('Invalid token:', error);
+          Cookies.remove('token');
+        }
+      }
+      setIsLoading(false);
+    };
+    initializeAuth();
   }, []);
 
   const login = async (data: LoginRequest): Promise<void> => {
@@ -84,16 +94,16 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
       // Note: httpOnly cannot be set client-side; consider server-side cookie management for production
       Cookies.set('token', response.token, {
         expires: 7,
-        secure: true, // Always require HTTPS
+        secure: process.env.NODE_ENV === 'production', // Always require HTTPS
         sameSite: 'strict'
       });
 
       setUser({
-        userId: JSON.parse(atob(response.token.split('.')[1])).sub,
+        userId: '',
         firstName: response.firstName,
         lastName: response.lastName,
-        email: data.email,
-        role: response.role,
+        email: response.email || data.email,
+        role: response.role || 'USER',
         notificationEnabled: true,
         emailNotificationsEnabled: true,
         inAppNotificationsEnabled: true,
@@ -110,39 +120,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     }
   };
 
-  // Check if user is authenticated on mount
-  useEffect(() => {
-    const token = Cookies.get('token');
-    if (token) {
-      // In a real app, you might want to validate the token with the server
-      // For now, we'll just assume it's valid and set a basic user object
-      try {
-        // Decode JWT payload (basic implementation)
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({
-          userId: payload.sub,
-          firstName: 'User', // These would come from a user profile API call
-          lastName: 'Name',
-          email: payload.email || '',
-          role: payload.role || 'USER',
-          notificationEnabled: true,
-          emailNotificationsEnabled: true,
-          inAppNotificationsEnabled: true,
-        });
-      } catch (error) {
-        console.error('Invalid token:', error);
-        Cookies.remove('token');
-      }
-    }
-    setIsLoading(false);
-  }, []);
-
-
   const register = async (data: RegisterRequest): Promise<void> => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       await apiClient.register(data);
-      toast.success('Registration successful! Please login.');
+      toast.success('Registration successful! Please check your email to verify your account, then login.');
       router.push('/auth/login');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed');
@@ -153,18 +135,71 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
   };
 
   const getCurrentUser = async (): Promise<User> => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const response = await apiClient.getCurrentUser();
       setUser(response);
       return response;
     } catch (error: any) {
+      console.error('Failed to get current user:', error);
       toast.error(error.response?.data?.message || 'Failed to get current user');
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
+
+  const beginGoogleLogin = () => {
+    const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
+    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
+    const callback = encodeURIComponent(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth/oauth-callback`);
+
+    const url =
+      `https://${domain}/authorize?` +
+      `response_type=id_token%20token&` +
+      `client_id=${clientId}&` +
+      `connection=google-oauth2&` +
+      `redirect_uri=${callback}&` +
+      `scope=openid%20profile%20email&` +
+      `nonce=random123`;
+
+    window.location.href = url;
+  };
+
+  const completeGoogleLogin = (
+    accessToken: string,
+    profile: { email: string; firstName: string; lastName: string }
+  ) => {
+    try {
+      Cookies.set('token', accessToken, { 
+        expires: 7,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      });
+      
+      const payload: any = jwtDecode(accessToken);
+
+      const newUser: User = {
+        userId: payload.sub,
+        firstName: payload.given_name,
+        lastName: payload.family_name,
+        email: payload.email,
+        role: 'USER',
+        notificationEnabled: true,
+        emailNotificationsEnabled: true,
+        inAppNotificationsEnabled: true,
+      };
+
+      setUser(newUser);
+
+      toast.success('Logged in successfully');
+      router.push('/dashboard');
+    } catch (error) {
+      toast.error('Unable to process Google Login');
+      router.push('/auth/login');
+    }
+  };
+    
 
   const logout = (): void => {
     Cookies.remove('token');
@@ -179,6 +214,8 @@ export const AuthProvider = ({ children }: AuthProviderProps): JSX.Element => {
     login,
     register,
     logout,
+    beginGoogleLogin,
+    completeGoogleLogin,
     getCurrentUser,
     isAuthenticated: !!user,
   };

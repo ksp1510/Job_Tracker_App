@@ -12,7 +12,8 @@ import {
   BookmarkIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Applications', href: '/applications', icon: DocumentDuplicateIcon },
   { name: 'Saved Jobs', href: '/jobs/saved', icon: BookmarkIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },
+  { name: 'Feedback', href: '/feedback', icon: ChatBubbleLeftRightIcon },
 ];
 
 export const Navbar = () => {
@@ -40,10 +42,14 @@ export const Navbar = () => {
     enabled: isAuthenticated,
     refetchInterval: 30000,
     select: (data) => {
-      const now = new Date();
-      return data.filter(notification => {
+  const now = new Date();
+    return data.filter(notification => {
+      try {
         const notifAt = new Date(notification.notifyAt);
-        return notifAt <= now; // Only show notifications that are due
+        return !isNaN(notifAt.getTime()) && notifAt <= now;
+      } catch {
+        return false;
+      }
       });
     },
   });

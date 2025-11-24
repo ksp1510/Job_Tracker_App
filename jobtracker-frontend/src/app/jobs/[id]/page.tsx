@@ -100,9 +100,9 @@ export default function JobDetailPage() {
           jobDescription: job.description,
           jobLink: job.applyUrl || undefined,
           status: 'APPLIED' as any,
-          salary: job.salary || job.salaryRange || undefined,
+          salary: job.salary || (job.salaryRange ? Number(job.salaryRange.replace(/[^0-9]/g, '')) : undefined),
           appliedDate: new Date().toISOString().split('T')[0],
-          notes: `Applied via JobTracker on ${new Date().toLocaleDateString()}`,
+          notes: `Applied via CareerTrackr on ${new Date().toLocaleDateString()}`,
           externalJobId: job.id,
         });
       },

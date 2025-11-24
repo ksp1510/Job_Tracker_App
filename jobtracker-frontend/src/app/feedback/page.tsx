@@ -1,6 +1,7 @@
+/* eslint-disable react/no-unescaped-entities */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { FeedbackType } from '@/lib/types';
@@ -9,13 +10,35 @@ import toast from 'react-hot-toast';
 export default function FeedbackPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     type: FeedbackType.GENERAL,
-    rating: 5,
+    rating: 10,
     message: '',
   });
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await apiClient.getCurrentUser();
+        setFormData(prev => ({
+          ...prev,
+          name: `${userData.firstName} ${userData.lastName}`,
+          email: userData.email,
+        }));
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        toast.error('Failed to load user information');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +47,13 @@ export default function FeedbackPage() {
     try {
       await apiClient.submitFeedback(formData);
       toast.success('Thank you for your feedback!');
-      setFormData({
-        name: '',
-        email: '',
+      // Reset only the fields that can be changed
+      setFormData(prev => ({
+        ...prev,
         type: FeedbackType.GENERAL,
-        rating: 5,
+        rating: 10,
         message: '',
-      });
+      }));
       setTimeout(() => router.push('/dashboard'), 2000);
     } catch (error) {
       console.error('Failed to submit feedback:', error);
@@ -56,16 +79,21 @@ export default function FeedbackPage() {
         <div className="bg-white shadow-md rounded-lg p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Send Feedback</h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-gray-800">
               We'd love to hear your thoughts, suggestions, or issues you're experiencing.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Your Name *
+                Your Name
               </label>
               <input
                 type="text"
@@ -73,16 +101,17 @@ export default function FeedbackPage() {
                 name="name"
                 required
                 value={formData.name}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="John Doe"
+                readOnly
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 text-gray-800 cursor-not-allowed shadow-sm focus:outline-none"
+                placeholder="Loading..."
               />
+              <p className="mt-1 text-xs text-gray-800">Auto-filled from your profile</p>
             </div>
 
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address *
+                Email Address
               </label>
               <input
                 type="email"
@@ -90,15 +119,16 @@ export default function FeedbackPage() {
                 name="email"
                 required
                 value={formData.email}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="john@example.com"
+                readOnly
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50 text-gray-800 cursor-not-allowed shadow-sm focus:outline-none"
+                placeholder="Loading..."
               />
+              <p className="mt-1 text-xs text-gray-800">Auto-filled from your profile</p>
             </div>
 
             {/* Feedback Type */}
             <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="type" className="block text-sm font-medium text-gray-800">
                 Feedback Type *
               </label>
               <select
@@ -107,7 +137,7 @@ export default function FeedbackPage() {
                 required
                 value={formData.type}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value={FeedbackType.GENERAL}>General Feedback</option>
                 <option value={FeedbackType.BUG}>Bug Report</option>
@@ -116,42 +146,60 @@ export default function FeedbackPage() {
               </select>
             </div>
 
-            {/* Rating */}
+            {/* Recommendation Score */}
             <div>
-              <label htmlFor="rating" className="block text-sm font-medium text-gray-700">
-                Rating * ({formData.rating}/5)
+              <label htmlFor="rating" className="block text-sm font-medium text-gray-800 mb-3">
+                How likely are you to recommend CareerTrackr? *
               </label>
-              <div className="mt-2 flex items-center space-x-2">
+              <div className="space-y-4">
+                {/* Number scale display */}
+                <div className="flex justify-between items-center px-1">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, rating: num }))}
+                      className={`w-8 h-8 rounded-full text-sm font-semibold transition-all ${
+                        formData.rating === num
+                          ? 'bg-blue-600 text-white scale-110 shadow-lg'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Slider */}
                 <input
                   type="range"
                   id="rating"
                   name="rating"
-                  min="1"
-                  max="5"
+                  min="0"
+                  max="10"
                   value={formData.rating}
                   onChange={handleChange}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gradient-to-r from-red-200 via-yellow-200 to-green-200 rounded-lg appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, 
+                      rgb(254 202 202) 0%, 
+                      rgb(253 224 71) 50%, 
+                      rgb(187 247 208) 100%)`
+                  }}
                 />
-                <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <svg
-                      key={star}
-                      className={`w-6 h-6 ${
-                        star <= formData.rating ? 'text-yellow-400' : 'text-gray-300'
-                      }`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+                
+                {/* Labels */}
+                <div className="flex justify-between text-xs text-gray-800 px-1">
+                  <span className="font-medium">Not likely</span>
+                  <span className="font-semibold text-lg text-blue-600">{formData.rating}</span>
+                  <span className="font-medium">Very likely</span>
                 </div>
               </div>
             </div>
 
             {/* Message */}
             <div>
-              <label htmlFor="message" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="message" className="block text-sm font-medium text-gray-800">
                 Your Message *
               </label>
               <textarea
@@ -164,7 +212,7 @@ export default function FeedbackPage() {
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Tell us what's on your mind..."
               />
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-800">
                 Minimum 10 characters. Be as detailed as possible.
               </p>
             </div>
@@ -174,7 +222,7 @@ export default function FeedbackPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
               </button>
@@ -187,6 +235,7 @@ export default function FeedbackPage() {
               </button>
             </div>
           </form>
+          )}
         </div>
 
         {/* Info Section */}

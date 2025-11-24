@@ -10,37 +10,28 @@ import org.springframework.stereotype.Component;
 public class ApiKeyValidator {
 
     private static final Logger logger = LoggerFactory.getLogger(ApiKeyValidator.class);
-    
-    @Value("${app.api.rotation.check:false}")
+
+    // OPTIONAL flag – defaults to false if not found
+    @Value("${jobs.keyRotationCheck:false}")
     private boolean enableKeyRotation;
 
-    @Value("${app.api.serpapi.key}")
-    private String serpApiKey;
-    
-    @Value("${app.api.rapidapi.key}")
+    // NEW: Uses your YAML structure (jobs.rapidapiKey)
+    // Also safely defaults to empty "" if missing so app does NOT crash
+    @Value("${jobs.rapidapiKey:NOT_SET}")
     private String rapidApiKey;
-    
-    
+
     @Scheduled(fixedRate = 86400000) // Daily check
     public void checkApiKeyHealth() {
-        // Test API keys and alert if they're not working
-        if (!testSerpApiKey()) {
-            // Send alert to administrators
-            logger.warn("SerpAPI key may be expired");
+        if (!enableKeyRotation) {
+            return;
         }
-        if (!testRapidApiKey()) {
-            // Send alert to administrators
-            logger.warn("RapidAPI key may be expired");
-        }
-    }
 
-    private boolean testSerpApiKey() {
-        // Test SerpAPI key
-        return serpApiKey != null && !serpApiKey.isEmpty();
+        if (!testRapidApiKey()) {
+            logger.warn("RapidAPI key may be expired or missing.");
+        }
     }
 
     private boolean testRapidApiKey() {
-        // Test RapidAPI key
         return rapidApiKey != null && !rapidApiKey.isEmpty();
     }
 }

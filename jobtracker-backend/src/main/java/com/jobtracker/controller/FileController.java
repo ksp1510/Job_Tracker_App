@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
-import com.jobtracker.config.JwtUtil;
+import com.jobtracker.util.UserContext;
 
 @RestController
 @RequestMapping("/files")
@@ -33,14 +33,12 @@ public class FileController {
     private final FileRepository fileRepository;
     private final ApplicationService applicationService;
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
     private final com.jobtracker.service.FileValidationService fileValidationService;
 
     public FileController(S3Service s3Service, FileRepository fileRepository,
                          ApplicationService applicationService, UserRepository userRepository,
-                         JwtUtil jwtUtil, com.jobtracker.service.FileValidationService fileValidationService) {
+                         com.jobtracker.service.FileValidationService fileValidationService) {
         this.s3Service = s3Service;
-        this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
         this.applicationService = applicationService;
         this.userRepository = userRepository;
@@ -58,8 +56,7 @@ public class FileController {
         fileValidationService.validatePdfFile(file);
 
         // Extract userId from token
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         // Get application and verify ownership
         Application app = applicationService.getApplication(applicationId, userId)
@@ -109,8 +106,7 @@ public class FileController {
         fileValidationService.validatePdfFile(file);
 
         // Extract userId from token
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Application app = applicationService.getApplication(applicationId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
@@ -149,20 +145,16 @@ public class FileController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Files>> listFiles(
-            @RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+    public ResponseEntity<List<Files>> listFiles() {
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(fileRepository.findByUserId(userId));
     }
 
     @GetMapping("/applications/{applicationId}/files")
     public ResponseEntity<List<Files>> getFilesByApplication(
-            @PathVariable String applicationId,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String applicationId) {
         // SECURITY FIX: Verify ownership before returning files
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Application app = applicationService.getApplication(applicationId, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
@@ -176,11 +168,9 @@ public class FileController {
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteFile(
-            @PathVariable String id,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String id) {
         // SECURITY FIX: Verify ownership before deletion
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
@@ -203,11 +193,9 @@ public class FileController {
 
     @GetMapping("/download/{id}")
     public ResponseEntity<byte[]> downloadFile(
-            @PathVariable String id,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String id) {
         // SECURITY FIX: Verify ownership before download
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
@@ -234,11 +222,9 @@ public class FileController {
 
     @GetMapping("/presigned/{id}")
     public ResponseEntity<String> getPresignedUrl(
-            @PathVariable String id,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String id) {
         // SECURITY FIX: Verify ownership before generating presigned URL
-        String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Files fileMeta = fileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
