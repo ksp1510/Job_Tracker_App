@@ -25,11 +25,12 @@ public class SecurityConfig {
     @Value("${auth0.domain}")
     private String auth0Domain;
 
-    @Value("${auth0.audience}")
+    @Value("${auth0.authentication.audience}")
     private String audience;
 
     @Value("${app.cors.allowed-origins}")
-    private String allowedOrigins;
+    private List<String> allowedOrigins;
+
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -100,8 +101,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Use specific origins from configuration instead of wildcard
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOrigins(allowedOrigins);
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

@@ -3,6 +3,7 @@ package com.jobtracker.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jobtracker.exception.AuthenticationException;
+
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,8 +11,14 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import com.auth0.client.mgmt.ManagementAPI;
+import com.auth0.exception.Auth0Exception;
+import com.auth0.client.mgmt.filter.UserFilter;
+import com.auth0.json.mgmt.tickets.PasswordChangeTicket;
+import com.auth0.json.mgmt.users.User;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,27 +29,41 @@ import java.util.Map;
 public class Auth0Service {
 
     @Value("${auth0.domain}")
-    private String auth0Domain;
+    private String domain;
+    
+    // SPA credentials for user authentication
+    @Value("${auth0.authentication.client-id}")
+    private String authClientId;
+    
+    @Value("${auth0.authentication.client-secret}")
+    private String authClientSecret;
+    
+    @Value("${auth0.authentication.audience}")
+    private String authAudience;
+    
+    // M2M credentials for Management API
+    @Value("${auth0.management.client-id}")
+    private String managementClientId;
+    
+    @Value("${auth0.management.client-secret}")
+    private String managementClientSecret;
+    
+    @Value("${auth0.management.audience}")
+    private String managementAudience;
 
-    @Value("${auth0.clientId}")
-    private String clientId;
-
-    @Value("${auth0.clientSecret}")
-    private String clientSecret;
-
-    @Value("${auth0.audience}")
-    private String audience;
+    @Value("${auth0.connection:Username-Password-Authentication}")
+    private String connection;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Authenticate user with email/password using Auth0's Resource Owner Password Grant
-     * This allows custom login UI while using Auth0 for authentication
+     * Uses SPA credentials
      */
     public Auth0LoginResponse authenticate(String email, String password) {
         try {
-            String url = String.format("https://%s/oauth/token", auth0Domain);
+            String url = String.format("https://%s/oauth/token", domain);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -51,9 +72,9 @@ public class Auth0Service {
             body.put("grant_type", "password");
             body.put("username", email);
             body.put("password", password);
-            body.put("client_id", clientId);
-            body.put("client_secret", clientSecret);
-            body.put("audience", audience);
+            body.put("client_id", authClientId);  // ✅ Use SPA client ID
+            body.put("client_secret", authClientSecret);  // ✅ Use SPA secret
+            body.put("audience", authAudience);  // ✅ Use auth audience
             body.put("scope", "openid profile email");
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -93,13 +114,14 @@ public class Auth0Service {
 
     /**
      * Create a new user in Auth0
+     * Uses Management API credentials
      */
     public Auth0User createUser(String firstName, String lastName, String email, String password) {
         try {
-            // First, get management API token
+            // Get management API token using M2M credentials
             String managementToken = getManagementApiToken();
 
-            String url = String.format("https://%s/api/v2/users", auth0Domain);
+            String url = String.format("https://%s/api/v2/users", domain);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -108,7 +130,7 @@ public class Auth0Service {
             Map<String, Object> body = new HashMap<>();
             body.put("email", email);
             body.put("password", password);
-            body.put("connection", "Username-Password-Authentication");
+            body.put("connection", connection);
             body.put("email_verified", false);
             
             // Add user metadata
@@ -172,7 +194,7 @@ public class Auth0Service {
      */
     public Auth0UserInfo getUserInfo(String accessToken) {
         try {
-            String url = String.format("https://%s/userinfo", auth0Domain);
+            String url = String.format("https://%s/userinfo", domain);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -201,19 +223,20 @@ public class Auth0Service {
 
     /**
      * Get Management API token (for user creation and management)
+     * Uses M2M credentials
      */
     private String getManagementApiToken() {
         try {
-            String url = String.format("https://%s/oauth/token", auth0Domain);
+            String url = String.format("https://%s/oauth/token", domain);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = new HashMap<>();
             body.put("grant_type", "client_credentials");
-            body.put("client_id", clientId);
-            body.put("client_secret", clientSecret);
-            body.put("audience", String.format("https://%s/api/v2/", auth0Domain));
+            body.put("client_id", managementClientId);  // ✅ Use M2M client ID
+            body.put("client_secret", managementClientSecret);  // ✅ Use M2M secret
+            body.put("audience", managementAudience);  // ✅ Use management audience
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
@@ -278,7 +301,7 @@ public class Auth0Service {
     public void changePassword(String userId, String newPassword) {
         try {
             String managementToken = getManagementApiToken();
-            String url = String.format("https://%s/api/v2/users/%s", auth0Domain, userId);
+            String url = String.format("https://%s/api/v2/users/%s", domain, userId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -286,7 +309,7 @@ public class Auth0Service {
 
             Map<String, Object> body = new HashMap<>();
             body.put("password", newPassword);
-            body.put("connection", "Username-Password-Authentication");
+            body.put("connection", connection);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
@@ -301,29 +324,112 @@ public class Auth0Service {
     }
 
     /**
-     * Send password reset email
+     * Send password reset email via Auth0
+     * @param email User's email address
+     * @throws Auth0Exception if Auth0 API call fails
      */
-    public void sendPasswordResetEmail(String email) {
+    public void sendPasswordResetEmail(String email) throws Auth0Exception {
+        log.info("🔵 Starting password reset process for email: {}", email);
+
         try {
-            String url = String.format("https://%s/dbconnections/change_password", auth0Domain);
+            // Get fresh management token
+            String managementToken = getManagementApiToken();
+            
+            // Initialize Auth0 Management API client
+            log.debug("Creating ManagementAPI client...");
+            ManagementAPI mgmt = ManagementAPI.newBuilder(domain, managementToken).build();
+            
+            // Find the user by email to get their user_id
+            log.debug("Finding user by email: {}", email);
+            UserFilter filter = new UserFilter().withQuery("email:\"" + email + "\"");
+            List<User> users = mgmt.users().list(filter).execute().getBody().getItems();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            if (users == null || users.isEmpty()) {
+                log.warn("⚠️ User not found with email: {}", email);
+                throw new Auth0Exception("User not found");
+            }
 
-            Map<String, Object> body = new HashMap<>();
-            body.put("client_id", clientId);
-            body.put("email", email);
-            body.put("connection", "Username-Password-Authentication");
+            User user = users.get(0);
+            String userId = user.getId();
+            log.debug("Found user ID: {}", userId);
+            
+            // Create password change ticket
+            PasswordChangeTicket ticket = new PasswordChangeTicket(userId);
+            ticket.setClientId(authClientId);  // ✅ Use SPA client ID for password reset
+            ticket.setTTLSeconds(3600); // Link expires in 1 hour
+            
+            log.debug("Ticket configuration:");
+            log.debug("  User ID: {}", userId);
+            log.debug("  Email: {}", email);
+            log.debug("  Client ID: {}", authClientId);
+            log.debug("  TTL: 3600 seconds");
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            // Send password reset email through Auth0
+            log.info("🔵 Calling Auth0 API to create password change ticket...");
+            PasswordChangeTicket response = mgmt.tickets()
+                .requestPasswordChange(ticket)
+                .execute()
+                .getBody();
 
-            restTemplate.postForEntity(url, request, String.class);
+            log.info("✅ Password reset email sent successfully to: {}", email);
+            log.debug("Password reset ticket URL: {}", response.getTicket());
 
-            log.info("Password reset email sent to: {}", email);
+        } catch (Auth0Exception e) {
+            log.error("❌ Failed to send password reset email for: {}", email, e);
+            throw e;
+        }
+    }
 
-        } catch (Exception e) {
-            log.error("Error sending password reset email", e);
-            throw new RuntimeException("Failed to send password reset email: " + e.getMessage());
+    /**
+     * Alternative implementation using user_id if you have it
+     * @param userId Auth0 user ID (e.g., auth0|123456)
+     * @param email User's email address
+     * @throws Auth0Exception if Auth0 API call fails
+     */
+    public void sendPasswordResetEmailByUserId(String userId, String email) throws Auth0Exception {
+        try {
+            // Get fresh management token
+            String managementToken = getManagementApiToken();
+            
+            ManagementAPI mgmt = ManagementAPI.newBuilder(domain, managementToken).build();
+
+            PasswordChangeTicket ticket = new PasswordChangeTicket(userId);
+            ticket.setClientId(authClientId);  // ✅ Use SPA client ID
+            ticket.setEmail(email);
+            ticket.setTTLSeconds(3600);
+
+            PasswordChangeTicket response = mgmt.tickets().requestPasswordChange(ticket).execute().getBody();
+
+            log.info("✅ Password reset email sent successfully to user: {}", userId);
+
+        } catch (Auth0Exception e) {
+            log.error("❌ Failed to send password reset email for user: {}", userId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Verify if a user exists by email (optional helper method)
+     * @param email User's email address
+     * @return true if user exists, false otherwise
+     */
+    public boolean userExistsByEmail(String email) {
+        try {
+            // Get fresh management token
+            String managementToken = getManagementApiToken();
+            
+            ManagementAPI mgmt = ManagementAPI.newBuilder(domain, managementToken).build();
+            
+            var users = mgmt.users()
+                .listByEmail(email, null)
+                .execute()
+                .getBody();
+            
+            return users != null && !users.isEmpty();
+            
+        } catch (Auth0Exception e) {
+            log.error("Error checking if user exists: {}", email, e);
+            return false;
         }
     }
 

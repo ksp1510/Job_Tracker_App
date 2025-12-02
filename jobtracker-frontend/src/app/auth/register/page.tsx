@@ -42,12 +42,14 @@ export default function RegisterPage() {
           <h2 className="text-center text-2xl font-bold text-gray-900">
             Create your account
           </h2>
+          {/*
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500">
               sign in to your existing account
             </Link>
           </p>
+          */}
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -197,7 +199,7 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          {/* GOOGLE BUTTON */}
+          {/* GOOGLE BUTTON 
         <button
           type="button"
           onClick={beginGoogleLogin}
@@ -223,13 +225,13 @@ export default function RegisterPage() {
           </svg>
           Continue with Google
         </button>
-
+        
         <div className="flex items-center">
           <div className="flex-grow border-t border-gray-300"></div>
           <span className="px-4 text-gray-500 text-sm">or</span>
           <div className="flex-grow border-t border-gray-300"></div>
         </div>
-
+        */}
           <div className="text-center">
             <span className="text-sm text-gray-600">Already have an account? </span>
             <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500">

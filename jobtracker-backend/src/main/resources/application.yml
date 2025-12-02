@@ -1,15 +1,17 @@
 spring:
+  profiles:
+    active: dev 
   application:
     name: job-tracker-app
-
-app:
-  cors:
-    allowed-origins: []
 
   data:
     mongodb:
       uri: ${MONGODB_URI}
       database: ${MONGODB_DB}
+
+app:
+  cors:
+    allowed-origins: "http://localhost:3000"
 
 aws:
   region: ${AWS_REGION}
@@ -23,9 +25,18 @@ aws:
 
 auth0:
   domain: ${AUTH0_DOMAIN}
-  clientId: ${AUTH0_CLIENT_ID}
-  clientSecret: ${AUTH0_CLIENT_SECRET}
-  audience: https://jobtracker-api
+  
+  # For user authentication (login) - Use SPA credentials
+  authentication:
+    client-id: ${AUTH0_SPA_CLIENT_ID}
+    client-secret: ${AUTH0_SPA_CLIENT_SECRET}
+    audience: https://jobtracker-api
+  
+  # For Management API (creating/managing users) - Use M2M credentials
+  management:
+    client-id: ${AUTH0_M2M_CLIENT_ID}
+    client-secret: ${AUTH0_M2M_CLIENT_SECRET}
+    audience: https://dev-ef81elo8soa00i4u.ca.auth0.com/api/v2/
 
 jobs:
   rapidapiKey: ${RAPIDAPI_KEY}
@@ -35,11 +46,11 @@ server:
   port: 8080
 
 ---
+
 spring:
   config:
     activate:
       on-profile: dev
-
   data:
     mongodb:
       auto-index-creation: true
@@ -51,6 +62,7 @@ logging:
     com.jobtracker: DEBUG
 
 ---
+
 spring:
   config:
     activate:

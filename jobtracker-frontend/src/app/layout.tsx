@@ -5,6 +5,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import ReactQueryProvider from '@/components/providers/ReactQueryProvider';
+import Auth0ProviderWrapper from './Auth0ProviderWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Auth0ProviderWrapper>
         <ReactQueryProvider>
           <AuthProvider>
             <div className="min-h-screen bg-gray-50">
@@ -52,6 +54,7 @@ export default function RootLayout({
             />
           </AuthProvider>
         </ReactQueryProvider>
+        </Auth0ProviderWrapper>
       </body>
     </html>
   );

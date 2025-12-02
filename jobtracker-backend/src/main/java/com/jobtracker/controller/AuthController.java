@@ -168,16 +168,25 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         try {
-           auth0Service.sendPasswordResetEmail(request.getEmail());
-           
-           return ResponseEntity.ok(new MessageResponse(
-            "Password reset email sent successfully"));
-
-        } catch (Exception e) {
-            log.error("Password reset email error: {}", e);
+            log.info("Password reset request received for email: {}", request.getEmail());
+            
+            auth0Service.sendPasswordResetEmail(request.getEmail());
+            
+            log.info("✅ Password reset email sent successfully to: {}", request.getEmail());
+            
             return ResponseEntity.ok(new MessageResponse(
-                "If an account exists with this email, a password reset email has been sent."));
-        }   
+                "Password reset email sent successfully"
+            ));
+            
+        } catch (Exception e) {
+            log.error("❌ Password reset email error for: {}", request.getEmail(), e);
+            
+            // Return generic success message for security
+            // (don't reveal if email exists or not)
+            return ResponseEntity.ok(new MessageResponse(
+                "If an account exists with this email, a password reset email has been sent."
+            ));
+        }
     }
 
     /**

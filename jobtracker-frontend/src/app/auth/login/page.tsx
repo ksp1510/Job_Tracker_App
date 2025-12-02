@@ -53,12 +53,14 @@ export default function LoginPage() {
           <h2 className="text-center text-2xl font-bold text-gray-900">
             Sign in to your account
           </h2>
+          {/*
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link href="/auth/register" className="font-medium text-indigo-600 hover:text-indigo-500">
               create a new account
             </Link>
           </p>
+          */}
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -145,7 +147,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Divider */}
+          {/* Divider 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
@@ -154,8 +156,8 @@ export default function LoginPage() {
               <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
             </div>
           </div>
-
-          {/* Google Sign In Button */}
+          */}
+          {/* Google Sign In Button 
           <div>
             <button
             type="button"
@@ -183,7 +185,7 @@ export default function LoginPage() {
               Sign in with Google
             </button>
           </div>
-
+          */}
           <div className="text-center">
             <span className="text-sm text-gray-600">Don't have an account? </span>
             <Link href="/auth/register" className="font-medium text-indigo-600 hover:text-indigo-500">

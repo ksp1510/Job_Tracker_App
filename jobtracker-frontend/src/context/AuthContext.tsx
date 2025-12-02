@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LoginRequest, RegisterRequest, User } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { jwtDecode } from 'jwt-decode';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface AuthContextType {
   user: User | null;
@@ -20,12 +21,12 @@ interface AuthContextType {
   getCurrentUser: () => Promise<User>;
   logout: () => void;
   beginGoogleLogin: () => void;
-  completeGoogleLogin: (accessToken: string,
-    profile: { email: string; firstName: string; lastName: string }) => void;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
@@ -40,11 +41,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const {
+    isAuthenticated: auth0IsAuthenticated,
+    isLoading: auth0IsLoading,
+    user: auth0User,
+    loginWithRedirect,
+    logout: auth0Logout,
+    getAccessTokenSilently,    
+  } = useAuth0();
+
+  useEffect(() => {
+    const syncAuth0User = async () => {
+      if (auth0IsAuthenticated && auth0User) {
+        try {
+          const token = await getAccessTokenSilently({
+            authorizationParams: {
+              audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+            },
+          });
+
+          Cookies.set('token', token, {
+            expires: 7,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+          });
+
+          const mappedUser: User = {
+            userId: auth0User.sub!,
+            firstName: auth0User.given_name || auth0User.name?.split(' ')[0] || 'User',
+            lastName: auth0User.family_name || auth0User.name?.split(' ')[1] || '',
+            email: auth0User.email!,
+            role: 'USER',
+            notificationEnabled: true,
+            emailNotificationsEnabled: true,
+            inAppNotificationsEnabled: true,
+          };
+
+          setUser(mappedUser);
+          toast.success(`Welcome, ${mappedUser.firstName}!`);
+          router.push('/dashboard');
+        } catch (error) {
+          console.error('Error getting Auth0 token:', error);
+          toast.error('Unable to process Google Login');
+          router.push('/auth/login');
+        }
+      }
+    };
+
+    if (!auth0IsLoading && auth0IsAuthenticated) {
+      syncAuth0User();
+    }
+  }, [auth0IsAuthenticated, auth0User, auth0IsLoading, getAccessTokenSilently]);
+
   // Fetch profile if there is a token but no user details
   const { data: profile, isError } = useQuery({
     queryKey: ['currentUser'],
     queryFn: apiClient.getCurrentUser,
-    enabled: !!Cookies.get('token') && user === null,
+    enabled: !!Cookies.get('token') && user === null && !auth0IsAuthenticated,
     retry: false,
   });
 
@@ -62,6 +115,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
   // On mount decode token to set minimal user info
   useEffect(() => {
     const initializeAuth = async () => {
+      if (auth0IsAuthenticated) {
+        setIsLoading(true);
+        return;
+      }
+
       const token = Cookies.get('token');
       if (token) {
         try {
@@ -83,8 +141,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
       }
       setIsLoading(false);
     };
-    initializeAuth();
-  }, []);
+
+    if (!auth0IsLoading) {
+      initializeAuth();
+    }
+  }, [auth0IsLoading, auth0IsAuthenticated]);
 
   const login = async (data: LoginRequest): Promise<void> => {
     setIsLoading(true);
@@ -148,76 +209,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }): JSX.Element
       setIsLoading(false);
     }
   };
-
+  
   const beginGoogleLogin = () => {
-    const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-    const callback = encodeURIComponent(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth/oauth-callback`);
-
-    const url =
-      `https://${domain}/authorize?` +
-      `response_type=id_token%20token&` +
-      `client_id=${clientId}&` +
-      `connection=google-oauth2&` +
-      `redirect_uri=${callback}&` +
-      `scope=openid%20profile%20email&` +
-      `nonce=random123`;
-
-    window.location.href = url;
+    loginWithRedirect({
+      authorizationParams: {
+        connection: "google-oauth2",
+        audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+        scope: 'openid profile email',
+      },
+    });
   };
-
-  const completeGoogleLogin = (
-    accessToken: string,
-    profile: { email: string; firstName: string; lastName: string }
-  ) => {
-    try {
-      Cookies.set('token', accessToken, { 
-        expires: 7,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-      });
-      
-      const payload: any = jwtDecode(accessToken);
-
-      const newUser: User = {
-        userId: payload.sub,
-        firstName: payload.given_name,
-        lastName: payload.family_name,
-        email: payload.email,
-        role: 'USER',
-        notificationEnabled: true,
-        emailNotificationsEnabled: true,
-        inAppNotificationsEnabled: true,
-      };
-
-      setUser(newUser);
-
-      toast.success('Logged in successfully');
-      router.push('/dashboard');
-    } catch (error) {
-      toast.error('Unable to process Google Login');
-      router.push('/auth/login');
-    }
-  };
-    
 
   const logout = (): void => {
     Cookies.remove('token');
     setUser(null);
-    toast.success('Logged out successfully');
-    router.push('/auth/login');
+
+    if (auth0IsAuthenticated) {
+      auth0Logout({
+        logoutParams: {
+          returnTo: `${window.location.origin}/auth/login`,
+        },
+      });
+    } else {
+      toast.success('Logged out successfully');
+      router.push('/auth/login');
+    }
   };
 
   const value: AuthContextType = {
     user,
-    isLoading,
+    isLoading: isLoading || auth0IsLoading,
     login,
     register,
     logout,
     beginGoogleLogin,
-    completeGoogleLogin,
     getCurrentUser,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user || auth0IsAuthenticated,
   };
 
   return (
