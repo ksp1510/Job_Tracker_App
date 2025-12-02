@@ -33,9 +33,9 @@ public class Feedback {
     @NotBlank(message = "Feedback type is required")
     private String type; // BUG, FEATURE_REQUEST, GENERAL, IMPROVEMENT
 
-    @Min(value = 1, message = "Rating must be between 1 and 5")
-    @Max(value = 5, message = "Rating must be between 1 and 5")
-    private Integer rating; // 1-5 stars
+    @Min(value = 0, message = "Rating must be between 0 and 10")
+    @Max(value = 10, message = "Rating must be between 0 and 10")
+    private Integer rating; // 0-10 stars
 
     @NotBlank(message = "Message is required")
     private String message;

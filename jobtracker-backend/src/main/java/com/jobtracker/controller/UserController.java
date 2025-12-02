@@ -2,53 +2,100 @@ package com.jobtracker.controller;
 
 import org.springframework.web.bind.annotation.*;
 
-import lombok.RequiredArgsConstructor;
-import lombok.Data;
-import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.jobtracker.model.User;
 import com.jobtracker.repository.UserRepository;
-import com.jobtracker.config.JwtUtil;
-import com.jobtracker.service.NotificationService;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+
+import java.util.Optional;
+
+
+@Slf4j
 @RestController
 @RequestMapping("/users")
-@RequiredArgsConstructor
 public class UserController {
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
-    private final NotificationService notificationService;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    
+    private PasswordEncoder passwordEncoder;
+    
 
     @GetMapping("/me")
-    public ResponseEntity<UserProfileResponse> getCurrentUser(
-            @RequestHeader("Authorization") String authorization) {
-        String token = authorization.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return ResponseEntity.ok(
-            new UserProfileResponse(
-                user.getUserId(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail()
-            )
-        );
+    public ResponseEntity<?> getCurrentUser() {
+        try {
+            // Get the authenticated user's ID from the JWT token
+            String userId = getUserIdFromToken();
+
+            if (userId == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            // Find user in MongoDB
+            Optional<User> userOptional = userRepository.findById(userId);
+
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.status(404).body("User not found");
+            }
+
+            User user = userOptional.get();
+
+            // Return the user data
+            return ResponseEntity.ok(user);
+
+        } catch (Exception e) {
+            log.error("Error getting current user", e);
+            return ResponseEntity.status(500).body("Internal Server Error");
+        }
+    }
+
+    private String getUserIdFromToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            return jwt.getSubject();
+        }
+        return null;
+    }
+
+    public static String  getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            return jwt.getSubject();
+        }
+        throw new RuntimeException("No authenticated user found");
+    }
+
+    public static String getCurrentUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            return jwt.getClaim("email");
+        }
+        return null;
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<MessageResponse> changePassword(
-            @Valid @RequestBody ChangePasswordRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @Valid @RequestBody ChangePasswordRequest request) {
         
-        String token = authorization.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = getCurrentUserId();
         
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -68,11 +115,9 @@ public class UserController {
 
     @PostMapping("/change-email")
     public ResponseEntity<MessageResponse> changeEmail(
-            @Valid @RequestBody ChangeEmailRequest request,
-            @RequestHeader("Authorization") String authorization) {
+            @Valid @RequestBody ChangeEmailRequest request) {
         
-        String token = authorization.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = getCurrentUserId();
         
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -97,11 +142,9 @@ public class UserController {
     }
 
     @DeleteMapping("/delete-account")
-    public ResponseEntity<MessageResponse> deleteAccount(
-            @RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<MessageResponse> deleteAccount() {
         
-        String token = authorization.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = getCurrentUserId();
         
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));

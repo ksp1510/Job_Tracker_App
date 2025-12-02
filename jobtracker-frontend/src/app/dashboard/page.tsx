@@ -8,7 +8,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { Application, ApplicationStatus } from '@/lib/types';
-import { formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
+import { formatDate, getStatusColor } from '@/lib/utils';
 import Link from 'next/link';
 import {
   PlusIcon,
@@ -24,22 +24,33 @@ import {
   BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 
-function formatUtcToLocal(utcString: string) {
+// Add this function at the top of your component (if it doesn't exist)
+const formatDateTime = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'Not scheduled';
+  
   try {
-    const date = new Date(utcString + 'Z');
-    return date.toLocaleString('en-CA', {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date string:', dateString);
+      return 'Invalid Date';
+    }
+    
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
       year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      timeZone: 'America/Toronto'
     });
-  } catch {
-    return utcString;
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Error formatting date';
   }
-}
+};
 
 // Interview Detail Modal Component
 const InterviewDetailModal = ({ 

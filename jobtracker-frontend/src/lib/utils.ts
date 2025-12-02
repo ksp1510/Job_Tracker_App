@@ -17,18 +17,31 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatDateTime(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date + 'Z') : new Date(date);
-  // Convert to local time and format as DD-MM-YYYY hh:mm A
-  const day = d.getDate().toString().padStart(2, '0');
-  const month = (d.getMonth() + 1).toString().padStart(2, '0');
-  const year = d.getFullYear();
-  let hours = d.getHours();
-  const minutes = d.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const hourStr = hours.toString().padStart(2, '0');
-  return `${day}-${month}-${year} ${hourStr}:${minutes} ${ampm}`;
+  try {
+    
+    const d = typeof date === 'string' ? new Date(date) : new Date(date);
+    
+    // Validate date
+    if (isNaN(d.getTime())) {
+      console.error('Invalid date:', date);
+      return 'Invalid Date';
+    }
+    
+    // Format with proper timezone
+    return d.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Toronto'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
 }
 
 export function formatSalary(salary: number): string {

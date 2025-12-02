@@ -3,7 +3,8 @@ package com.jobtracker.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import java.time.LocalDateTime;
+
+import java.time.Instant;
 
 @Document(collection = "notification_preferences")
 public class NotificationPreference {
@@ -16,17 +17,17 @@ public class NotificationPreference {
 
     private boolean emailEnabled = true;   // user-controlled
     private boolean inAppEnabled = true;   // enforced by backend
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private Instant updatedAt = Instant.now();
 
     // ✅ No-args constructor (required by Spring Data)
     public NotificationPreference() {
         this.emailEnabled = true;
         this.inAppEnabled = true;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     // ✅ All-args constructor (for custom initialization)
-    public NotificationPreference(String userId, boolean emailEnabled, boolean inAppEnabled, LocalDateTime updatedAt) {
+    public NotificationPreference(String userId, boolean emailEnabled, boolean inAppEnabled, Instant updatedAt) {
         this.userId = userId;
         this.emailEnabled = emailEnabled;
         this.inAppEnabled = inAppEnabled;
@@ -66,11 +67,11 @@ public class NotificationPreference {
         this.inAppEnabled = inAppEnabled;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
+    public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
 }

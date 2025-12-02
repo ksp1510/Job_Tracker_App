@@ -14,8 +14,8 @@ public class ExternalJob {
     private String experienceLevel;
     private String description;
     private String applyUrl;
-    private String salaryMin;
-    private String salaryMax;
+    private Double salaryMin;
+    private Double salaryMax;
     private List<String> requiredSkills;
     private String postedDate;
     private String source;

@@ -5,8 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -19,16 +22,15 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtFilter;
-    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    @Value("${auth0.domain}")
+    private String auth0Domain;
+
+    @Value("${auth0.authentication.audience}")
+    private String audience;
 
     @Value("${app.cors.allowed-origins}")
-    private String allowedOrigins;
+    private List<String> allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter, OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
-        this.jwtFilter = jwtFilter;
-        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
-    }
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -68,20 +70,39 @@ public class SecurityConfig {
                 .requestMatchers("/feedback/**").authenticated() // Other feedback endpoints require auth
                 .anyRequest().authenticated() // SECURITY FIX: Deny by default instead of permitAll
             )
-            .oauth2Login(oauth2 -> oauth2
-                .successHandler(oAuth2LoginSuccessHandler)
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.decoder(jwtDecoder()))
+            );
 
         return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        String issuerUri = String.format("https://%s/", auth0Domain);
+
+        NimbusJwtDecoder jwtDecoder = JwtDecoders.fromOidcIssuerLocation(issuerUri);
+
+        // Create audience validator
+        OAuth2TokenValidator<Jwt> audienceValidator = new AudienceValidator(audience);
+
+        // Create issuer validator
+        OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
+
+        // Combine validators
+        OAuth2TokenValidator<Jwt> withAudience = new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator);
+
+        jwtDecoder.setJwtValidator(withAudience);
+
+        return jwtDecoder;
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Use specific origins from configuration instead of wildcard
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOrigins(allowedOrigins);
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -91,5 +112,24 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    static class AudienceValidator implements OAuth2TokenValidator<Jwt> {
+        private final String audience;
+
+        AudienceValidator(String audience) {
+            this.audience = audience;
+        }
+
+        public OAuth2TokenValidatorResult validate(Jwt jwt) {
+            if (jwt.getAudience().contains(audience)) {
+                return OAuth2TokenValidatorResult.success();
+            }
+            return OAuth2TokenValidatorResult.failure(
+                new org.springframework.security.oauth2.core.OAuth2Error(
+                    "invalid_token",
+                    "The required audience is missing.",
+                    null));
+        }
     }
 }

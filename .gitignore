@@ -25,6 +25,17 @@ hs_err_pid*
 !.mvn/wrapper/
 !.mvn/wrapper/maven-wrapper.jar
 
+# Ignore environment configuration
+src/main/resources/application-dev.yml
+src/main/resources/application-prod.yml
+
+# Ignore all local override YAMLs
+application-*.yml
+
+# Optional: ignore all YAML files under resources (if you want full safety)
+# src/main/resources/*.yml
+
+
 # Python / FastAPI
 __pycache__/
 *.pyc

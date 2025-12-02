@@ -8,7 +8,6 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { Notification, Application } from '@/lib/types';
-import { formatDateTime } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -56,20 +55,38 @@ interface ReminderForm {
   message: string;
 }
 
-function formatUtcToLocal(utcString: string) {
+function formatUtcToLocal(utcString: string | null | undefined) {
+  // ✅ Handle null/undefined
+  if (!utcString) {
+    return 'Not scheduled';
+  }
+  
   try {
-    const date = new Date(utcString + 'Z');
-    return date.toLocaleString('en-CA', {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    // ✅ FIXED: Handle both formats properly
+    // Check if string already has 'Z' or timezone offset
+    const hasTimezone = utcString.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(utcString);
+    const dateString = hasTimezone ? utcString : utcString + 'Z';
+    
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date:', utcString);
+      return 'Invalid Date';
+    }
+    
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
       year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      timeZone: 'America/Toronto'
     });
-  } catch {
-    return utcString;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
   }
 }
 
@@ -190,16 +207,20 @@ const NotificationDetailModal = ({
             </div>
           </div>
 
-          {/* Scheduled Time */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Scheduled For
-            </label>
-            <div className="flex items-center space-x-2 text-gray-900">
-              <CalendarIcon className="h-5 w-5 text-gray-500" />
-              <span>{formatUtcToLocal(notification.eventDate)}</span>
+          {/* Event Date - When the actual interview/deadline is */}
+          {notification.eventDate && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {notification.type === 'INTERVIEW' ? 'Interview Date' : 
+                notification.type === 'DEADLINE' ? 'Deadline' : 
+                'Event Date'}
+              </label>
+              <div className="flex items-center space-x-2 text-gray-900">
+                <CalendarIcon className="h-5 w-5 text-gray-500" />
+                <span>{formatUtcToLocal(notification.eventDate)}</span>  {/* ✅ CORRECT */}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Status */}
           <div className="flex items-center justify-between pt-4 border-t">
@@ -511,7 +532,7 @@ export default function NotificationsPage() {
                           {/* Time and Type */}
                           <div className="flex items-center space-x-3 mt-2">
                             <p className="text-xs text-gray-500">
-                              {formatUtcToLocal(notification.eventDate)}
+                              {notification.eventDate ? formatUtcToLocal(notification.eventDate) : 'Not scheduled'}
                             </p>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                               {notification.type.toLowerCase()}

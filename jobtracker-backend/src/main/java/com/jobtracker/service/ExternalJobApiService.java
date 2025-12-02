@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 public class ExternalJobApiService {
@@ -28,10 +27,7 @@ public class ExternalJobApiService {
     private final JobListingRepository jobListingRepository;
     private final ObjectMapper objectMapper;
 
-    @Value("${app.api.serpapi.key:}")
-    private String serpApiKey;
-
-    @Value("${app.api.rapidapi.key:}")
+    @Value("${jobs.rapidapiKey:}")
     private String rapidApiKey;
 
     public ExternalJobApiService(WebClient.Builder webClientBuilder, 
@@ -46,51 +42,10 @@ public class ExternalJobApiService {
     @PostConstruct
     public void debugConfiguration() {
         System.out.println("🔧 ExternalJobApiService Configuration:");
-        System.out.println("   SerpAPI key length: " + (serpApiKey != null ? serpApiKey.length() : "null"));
         System.out.println("   RapidAPI key length: " + (rapidApiKey != null ? rapidApiKey.length() : "null"));
         
         System.out.println("🔧 Direct Environment Variables:");
-        System.out.println("   SERPAPI_KEY: " + (System.getenv("SERPAPI_KEY") != null ? "SET" : "NOT_SET"));
         System.out.println("   RAPIDAPI_KEY: " + (System.getenv("RAPIDAPI_KEY") != null ? "SET" : "NOT_SET"));  
-    }
-
-    /**
-     * FIXED: Helper method to determine country code from location
-     */
-    private String getCountryCode(String location) {
-        if (location == null) return "us";
-        
-        String lowerLocation = location.toLowerCase();
-        
-        // India
-        if (lowerLocation.contains("india") || lowerLocation.contains("ahmedabad") || 
-            lowerLocation.contains("mumbai") || lowerLocation.contains("delhi") ||
-            lowerLocation.contains("bangalore") || lowerLocation.contains("hyderabad") ||
-            lowerLocation.contains("pune") || lowerLocation.contains("chennai") ||
-            lowerLocation.contains("kolkata")) {
-            return "in";
-        }
-        
-        // Canada
-        if (lowerLocation.contains("canada") || lowerLocation.contains("toronto") ||
-            lowerLocation.contains("vancouver") || lowerLocation.contains("montreal")) {
-            return "ca";
-        }
-        
-        // UK
-        if (lowerLocation.contains("uk") || lowerLocation.contains("united kingdom") ||
-            lowerLocation.contains("london") || lowerLocation.contains("manchester")) {
-            return "gb";
-        }
-        
-        // Australia
-        if (lowerLocation.contains("australia") || lowerLocation.contains("sydney") ||
-            lowerLocation.contains("melbourne")) {
-            return "au";
-        }
-        
-        // Default to US
-        return "us";
     }
 
     public void geocodeAndSave(JobListing job) {
@@ -119,19 +74,6 @@ public class ExternalJobApiService {
         return CompletableFuture.supplyAsync(() -> {
             StringBuilder results = new StringBuilder();
             
-            results.append("=== SerpAPI ===\n");
-            if (serpApiKey.isEmpty()) {
-                results.append("❌ SerpAPI key not configured\n");
-            } else {
-                results.append("✅ SerpAPI key configured (length: ").append(serpApiKey.length()).append(")\n");
-                try {
-                    testSerpAPIConnection();
-                    results.append("✅ SerpAPI connection successful\n");
-                } catch (Exception e) {
-                    results.append("❌ SerpAPI connection failed: ").append(e.getMessage()).append("\n");
-                }
-            }
-            
             results.append("=== RapidAPI ===\n");
             if (rapidApiKey.isEmpty()) {
                 results.append("❌ RapidAPI key not configured\n");
@@ -147,31 +89,6 @@ public class ExternalJobApiService {
 
             return results.toString();
         });
-    }
-
-    private void testSerpAPIConnection() throws Exception {
-        try {
-            String response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .scheme("https")
-                            .host("serpapi.com")
-                            .path("/search.json")
-                            .queryParam("engine", "google_jobs")
-                            .queryParam("q", "test")
-                            .queryParam("location", "united states")
-                            .queryParam("api_key", serpApiKey)
-                            .queryParam("num_pages", "1")
-                            .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            System.out.println("✅ SerpAPI Response received: " + (response != null ? "Success" : "No response"));
-        } catch (WebClientResponseException e) {
-            System.err.println("❌ SerpAPI Error - Status: " + e.getStatusCode());
-            System.err.println("❌ SerpAPI Error - Response: " + e.getResponseBodyAsString());
-            throw new RuntimeException("SerpAPI test failed: " + e.getStatusCode());
-        }
     }
 
     private void testRapidAPIConnection() throws Exception {
@@ -291,6 +208,7 @@ public class ExternalJobApiService {
     /**
      * Fetch from SerpAPI Google Jobs - FIXED: Added country code support
      */
+    /*
     private CompletableFuture<Void> fetchFromSerpAPI(
         String query, String location, String jobType,
         Double minSalary, Double maxSalary, List<String> skills) {
@@ -345,6 +263,7 @@ public class ExternalJobApiService {
             }
         });
     }
+    */
 
     private List<JobListing> parseJSearchResponse(String json) {
         List<JobListing> jobs = new ArrayList<>();
@@ -391,6 +310,7 @@ public class ExternalJobApiService {
         return jobs;
     }
 
+    /*
     private List<JobListing> parseSerpAPIResponse(String json) {
         List<JobListing> jobs = new ArrayList<>();
         try {
@@ -422,6 +342,7 @@ public class ExternalJobApiService {
         }
         return jobs;
     }
+    */
 
     /**
      * Manual job fetch trigger

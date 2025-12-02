@@ -6,6 +6,7 @@ import com.jobtracker.repository.FileRepository;
 import com.jobtracker.service.ApplicationService;
 import com.jobtracker.service.InputValidationService;
 import com.jobtracker.service.NotificationService;
+import com.jobtracker.util.UserContext;
 import com.jobtracker.model.Status;
 
 import com.jobtracker.exception.ResourceNotFoundException;
@@ -13,7 +14,6 @@ import com.jobtracker.exception.ResourceNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import com.jobtracker.config.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -25,15 +25,13 @@ public class ApplicationController {
 
     private final ApplicationService service;
     private final NotificationService notificationService;
-    private final JwtUtil jwtUtil;
     private final FileRepository fileRepository;
     private final InputValidationService inputValidationService;
 
-    public ApplicationController(ApplicationService service, NotificationService notificationService, JwtUtil jwtUtil,
+    public ApplicationController(ApplicationService service, NotificationService notificationService,
                                 FileRepository fileRepository, InputValidationService inputValidationService) {
         this.service = service;
         this.notificationService = notificationService;
-        this.jwtUtil = jwtUtil;
         this.fileRepository = fileRepository;
         this.inputValidationService = inputValidationService;
     }
@@ -43,7 +41,8 @@ public class ApplicationController {
     public ResponseEntity<Application> create(@Valid @RequestBody Application application,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
+        application.setUserId(userId);
 
         // SECURITY: Validate input to prevent NoSQL injection
         application.setCompanyName(inputValidationService.sanitizeJobField(application.getCompanyName()));
@@ -76,9 +75,6 @@ public class ApplicationController {
             application.setStatus(Status.valueOf(validated)); // convert validated string back to enum
         }
 
-
-        application.setUserId(userId);
-
         Application savedApp = service.createApplication(application);
         
         try {
@@ -98,7 +94,7 @@ public class ApplicationController {
     public ResponseEntity<List<Application>> getAll(
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(service.getUserApplications(userId));
     }
 
@@ -108,7 +104,7 @@ public class ApplicationController {
         @RequestParam String status,
         @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         // SECURITY: Validate status parameter to prevent injection
         String[] allowedStatuses = {"APPLIED", "INTERVIEW", "ASSESSMENT", "OFFER", "REJECTED", "HIRED", "WITHDRAWN"};
@@ -122,7 +118,7 @@ public class ApplicationController {
     public ResponseEntity<Application> getById(@PathVariable String id,
                                             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
 
         Application app = service.getApplication(id, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
@@ -136,7 +132,7 @@ public class ApplicationController {
             @PathVariable String id,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(service.updateApplication(id, userId, appDetails));
     }
 
@@ -145,7 +141,7 @@ public class ApplicationController {
     public ResponseEntity<Void> delete(@PathVariable String id,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
         service.deleteApplication(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -156,7 +152,7 @@ public class ApplicationController {
             @PathVariable String id,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        String userId = jwtUtil.getUserId(token);
+        String userId = UserContext.getUserId();
         
         Application app = service.getApplication(id, userId)
             .orElseThrow(() -> new ResourceNotFoundException("Application not found"));

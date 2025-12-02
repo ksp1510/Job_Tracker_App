@@ -56,7 +56,7 @@ export interface JobListing {
     description: string;
     jobType?: string;
     experienceLevel?: string;
-    salary?: string;
+    salary?: number;
     salaryRange?: string;
     skills?: string[];
     applyUrl?: string;
@@ -106,10 +106,11 @@ export enum NotificationChannel {
 }
 
 export interface AuthResponse {
+    email: string;
     token: string;
-    role: string;
     firstName: string;
     lastName: string;
+    role: string;
 }
 
 export interface RegisterRequest {

@@ -3,7 +3,7 @@ package com.jobtracker.ai.controller;
 
 import com.jobtracker.ai.model.InterviewPrep;
 import com.jobtracker.ai.service.InterviewPrepService;
-import com.jobtracker.config.JwtUtil;
+import com.jobtracker.util.UserContext;
 import lombok.Data;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -19,19 +19,16 @@ import java.util.List;
 public class InterviewPrepController {
 
     private final InterviewPrepService service;
-    private final JwtUtil jwtUtil;
 
-    public InterviewPrepController(InterviewPrepService service, JwtUtil jwtUtil) {
+    public InterviewPrepController(InterviewPrepService service) {
         this.service = service;
-        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping
     public ResponseEntity<InterviewPrep> saveQuestion(
-            @Valid @RequestBody InterviewPrepRequest request,
-            @RequestHeader("Authorization") String authHeader) {
+            @Valid @RequestBody InterviewPrepRequest request) {
         
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         InterviewPrep prep = service.saveQuestion(
                 userId, 
                 request.getQuestion(), 
@@ -43,26 +40,23 @@ public class InterviewPrepController {
     }
 
     @GetMapping
-    public ResponseEntity<List<InterviewPrep>> getUserQuestions(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<List<InterviewPrep>> getUserQuestions() {
         
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(service.getUserQuestions(userId));
     }
 
     @GetMapping("/category/{category}")
     public ResponseEntity<List<InterviewPrep>> getQuestionsByCategory(
-            @PathVariable String category,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String category) {
         
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         return ResponseEntity.ok(service.getQuestionsByCategory(userId, category));
     }
 
     @PostMapping("/{id}/feedback")
     public ResponseEntity<InterviewPrep> generateFeedback(
-            @PathVariable String id,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String id) {
         
         // Generate AI feedback and update the record
         String feedback = service.generateAiFeedback("", ""); // TODO: Get actual question/answer
@@ -73,18 +67,12 @@ public class InterviewPrepController {
 
     @PostMapping("/{id}/bookmark")
     public ResponseEntity<Void> toggleBookmark(
-            @PathVariable String id,
-            @RequestHeader("Authorization") String authHeader) {
+            @PathVariable String id) {
         
-        String userId = extractUserId(authHeader);
+        String userId = UserContext.getUserId();
         service.toggleBookmark(id, userId);
         
         return ResponseEntity.ok().build();
-    }
-
-    private String extractUserId(String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        return jwtUtil.getUserId(token);
     }
 
     @Data

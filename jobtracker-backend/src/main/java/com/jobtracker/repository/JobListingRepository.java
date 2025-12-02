@@ -20,4 +20,5 @@ public interface JobListingRepository extends MongoRepository<JobListing, String
     List<JobListing> findByFetchedAtBefore(Instant cutoff);
     Page<JobListing> findByIsActiveTrueAndTitleRegex(String string, Pageable pageable);
     Page<JobListing> findByIsActiveTrueAndTitleRegexAndLocationRegex(String string, String string2, Pageable pageable);
+    long countByIsActiveTrue();
 }
