@@ -224,12 +224,12 @@ export default function ApplicationDetailPage() {
               )}
 
               {/* Assessment Date */}
-              {application.assessmentDate && (
+              {application.assessmentDeadline && (
                 <div className="flex items-center space-x-3">
                   <CalendarIcon className="h-5 w-5 text-gray-700" />
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Assessment Date</dt>
-                    <dd className="text-lg text-gray-900">{formatDateTime(application.assessmentDate)}</dd>
+                    <dd className="text-lg text-gray-900">{formatDateTime(application.assessmentDeadline)}</dd>
                   </div>
                 </div>
               )}

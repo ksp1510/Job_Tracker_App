@@ -35,7 +35,7 @@ interface ApplicationForm {
   appliedDate?: string;
   referral?: string;
   interviewDate?: string;
-  assessmentDate?: string;
+  assessmentDeadline?: string;
 }
 
 export default function EditApplicationPage() {
@@ -66,12 +66,12 @@ export default function EditApplicationPage() {
         jobLink: application.jobLink || '',
         recruiterContact: application.recruiterContact || '',
         status: application.status,
-        salary: application.salary || '',
+        salary: application.salary ? String(application.salary) : '',
         notes: application.notes || '',
         appliedDate: application.appliedDate?.split('T')[0] || '',
         referral: application.referral || '',
         interviewDate: application.interviewDate?.slice(0, 16) || '',
-        assessmentDate: application.assessmentDate?.slice(0, 16) || '',
+        assessmentDeadline: application.assessmentDeadline?.slice(0, 16) || '',
       });
     }
   }, [application, reset]);
@@ -87,12 +87,12 @@ export default function EditApplicationPage() {
         jobLink: data.jobLink,
         recruiterContact: data.recruiterContact,
         status: data.status,
-        salary: data.salary,
+        salary: data.salary ? Number(data.salary) : undefined,
         notes: data.notes,
         appliedDate: data.appliedDate,
         referral: data.referral,
         interviewDate: data.interviewDate,
-        assessmentDate: data.assessmentDate,
+        assessmentDeadline: data.assessmentDeadline,
       };
       return apiClient.updateApplication(applicationId, updateData);
     },
@@ -280,7 +280,7 @@ export default function EditApplicationPage() {
                     Assessment Date
                   </label>
                   <input
-                    {...register('assessmentDate')}
+                    {...register('assessmentDeadline')}
                     type="datetime-local"
                     className="text-gray-900 pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />

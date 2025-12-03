@@ -1,8 +1,10 @@
+/* eslint-disable react/jsx-no-undef */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/applications/new/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -41,7 +43,7 @@ interface ApplicationForm {
   externalJobId: string;
 }
 
-export default function NewApplicationPage() {
+function NewApplicationForm() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,7 +74,8 @@ export default function NewApplicationPage() {
       setValue('jobLocation', jobDetails.location);
       setValue('jobDescription', jobDetails.description);
       setValue('jobLink', jobDetails.applyUrl || '');
-      setValue('salary', jobDetails.salary || jobDetails.salaryRange || '');
+      const salaryValue = jobDetails.salary || jobDetails.salaryRange || '';
+      setValue('salary', salaryValue ? String(salaryValue) : '');
       setValue('externalJobId', jobId!);
     }
   }, [jobDetails, setValue]);
@@ -377,5 +380,17 @@ export default function NewApplicationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewApplicationPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <NewApplicationForm />
+    </Suspense>
   );
 }
