@@ -45,7 +45,6 @@ const nextConfig = {
   // Fix: Turbopack "workspace root" warning
   // ------------------------------------------------------
   experimental: {
-    outputFileTracingRoot: __dirname,
     serverActions: {
       allowedOrigins: [
         "localhost",
@@ -57,6 +56,8 @@ const nextConfig = {
       ],
     },
   },
+
+  outputFileTracingRoot: __dirname,
 
   // ------------------------------------------------------
   // Production Hardening & Performance
