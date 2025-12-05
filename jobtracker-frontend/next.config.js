@@ -49,7 +49,7 @@ const nextConfig = {
       allowedOrigins: [
         "localhost",
         "127.0.0.1",
-        "100.31.153.218",          // ← EC2 PUBLIC IP
+        "100.31.153.218",       
         "app.careertrackr.dev",
         "api.careertrackr.dev",
         "d1re9c8ele1co.cloudfront.net",
