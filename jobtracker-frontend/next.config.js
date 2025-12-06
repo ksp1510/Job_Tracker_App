@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /** @type {import('next').NextConfig} */
+
+const path = require("path");
+
 const nextConfig = {
   // ------------------------------------------------------
   // Image Optimization (allow EC2 IP + domains)
