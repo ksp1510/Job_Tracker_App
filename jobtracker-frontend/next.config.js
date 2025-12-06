@@ -57,8 +57,6 @@ const nextConfig = {
     },
   },
 
-  outputFileTracingRoot: __dirname,
-
   // ------------------------------------------------------
   // Production Hardening & Performance
   // ------------------------------------------------------
