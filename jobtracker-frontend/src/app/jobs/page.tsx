@@ -86,7 +86,17 @@ export default function JobSearchPage() {
 
   /** Fetch jobs with caching */
   const { data: jobsResponse, isLoading, error, isFetching } = useQuery({
-    queryKey: ['jobs', searchParams],
+    queryKey: [
+        'jobs',
+        searchParams.query || '',
+        searchParams.location || '',
+        searchParams.jobType || '',
+        searchParams.minSalary || '',
+        searchParams.maxSalary || '',
+        searchParams.skills?.join(',') || '',
+        searchParams.page,
+        searchParams.size
+      ],
     queryFn: async () => {
       const hasCached = await apiClient.checkCacheStatus();
       const lastQuery = localStorage.getItem("lastQuery") || "";
