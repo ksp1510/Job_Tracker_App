@@ -1,10 +1,13 @@
+/* Tailwind v4 import */
 @import "tailwindcss";
 
+/* Your CSS variables */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* Theme extension */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -12,6 +15,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode variables */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,201 +23,186 @@
   }
 }
 
+/* Base body styles */
 body {
-  background: var(--background);/* src/app/globals.css */
-  @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
-  
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 10px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-  }
-  
-  /* Line clamp utility for text truncation */
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-  
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  
-  /* Custom focus styles */
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
-  }
-  
-  /* Animation for notifications */
-  @keyframes slideInRight {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out;
-  }
-  
-  /* Custom button variants */
-  .btn-primary {
-    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
-  }
-  
-  .btn-secondary {
-    @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
-  }
-  
-  .btn-danger {
-    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500;
-  }
-  
-  /* Card styles */
-  .card {
-    @apply bg-white overflow-hidden shadow rounded-lg;
-  }
-  
-  .card-header {
-    @apply px-4 py-5 sm:px-6;
-  }
-  
-  .card-body {
-    @apply px-4 py-5 sm:p-6;
-  }
-  
-  .card-footer {
-    @apply px-4 py-4 sm:px-6;
-  }
-  
-  /* Form styles */
-  .form-input {
-    @apply appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
-  }
-  
-  .form-label {
-    @apply block text-sm font-medium text-gray-700;
-  }
-  
-  .form-error {
-    @apply mt-1 text-sm text-red-600;
-  }
-  
-  /* Status badge styles */
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  
-  .badge-blue {
-    @apply bg-blue-100 text-blue-800;
-  }
-  
-  .badge-yellow {
-    @apply bg-yellow-100 text-yellow-800;
-  }
-  
-  .badge-green {
-    @apply bg-green-100 text-green-800;
-  }
-  
-  .badge-red {
-    @apply bg-red-100 text-red-800;
-  }
-  
-  .badge-gray {
-    @apply bg-gray-100 text-gray-800;
-  }
-  
-  /* Loading spinner */
-  .spinner {
-    @apply animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600;
-  }
-  
-  /* Mobile responsive utilities */
-  @media (max-width: 640px) {
-    .mobile-hidden {
-      display: none;
-    }
-  }
-  
-  /* Print styles */
-  @media print {
-    .print-hidden {
-      display: none !important;
-    }
-    
-    .print-break-before {
-      break-before: page;
-    }
-  }
-  
-  /* Hover effects */
-  .hover-lift {
-    @apply transition-all duration-200 ease-in-out;
-  }
-  
-  .hover-lift:hover {
-    @apply transform -translate-y-1 shadow-lg;
-  }
-  
-  /* Glassmorphism effect */
-  .glass {
-    @apply backdrop-blur-sm bg-white/80;
-  }
-  
-  /* Custom shadows */
-  .shadow-card {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  }
-  
-  .shadow-card-hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-  
-  /* Notification toast custom styles */
-  .toast-success {
-    @apply bg-green-500 text-white;
-  }
-  
-  .toast-error {
-    @apply bg-red-500 text-white;
-  }
-  
-  .toast-info {
-    @apply bg-blue-500 text-white;
-  }
-  
-  /* Dark mode support (future enhancement) */
-  @media (prefers-color-scheme: dark) {
-    .dark-mode {
-      @apply bg-gray-900 text-gray-100;
-    }
-  }
+  background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ------------------ CUSTOM UTILITIES ------------------ */
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Line clamping */
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Focus ring */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+}
+
+/* Slide animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+}
+
+.btn-danger {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500;
+}
+
+/* Cards */
+.card {
+  @apply bg-white overflow-hidden shadow rounded-lg;
+}
+.card-header {
+  @apply px-4 py-5 sm:px-6;
+}
+.card-body {
+  @apply px-4 py-5 sm:p-6;
+}
+.card-footer {
+  @apply px-4 py-4 sm:px-6;
+}
+
+/* Form */
+.form-input {
+  @apply appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+}
+.form-label {
+  @apply block text-sm font-medium text-gray-700;
+}
+.form-error {
+  @apply mt-1 text-sm text-red-600;
+}
+
+/* Badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+.badge-blue {
+  @apply bg-blue-100 text-blue-800;
+}
+.badge-yellow {
+  @apply bg-yellow-100 text-yellow-800;
+}
+.badge-green {
+  @apply bg-green-100 text-green-800;
+}
+.badge-red {
+  @apply bg-red-100 text-red-800;
+}
+.badge-gray {
+  @apply bg-gray-100 text-gray-800;
+}
+
+/* Spinner */
+.spinner {
+  @apply animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600;
+}
+
+/* Hover lift */
+.hover-lift {
+  @apply transition-all duration-200 ease-in-out;
+}
+.hover-lift:hover {
+  @apply -translate-y-1 shadow-lg;
+}
+
+/* Glassmorphism */
+.glass {
+  @apply backdrop-blur-sm bg-white/80;
+}
+
+/* Custom shadows */
+.shadow-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.shadow-card-hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+
+/* Mobile responsive utilities */
+@media (max-width: 640px) {
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-break-before {
+    break-before: page;
+  }
+}
+
+/* Notification toast custom styles */
+.toast-success {
+  @apply bg-green-500 text-white;
+}
+
+.toast-error {
+  @apply bg-red-500 text-white;
+}
+
+.toast-info {
+  @apply bg-blue-500 text-white;
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode {
+    @apply bg-gray-900 text-gray-100;
+  }
 }
