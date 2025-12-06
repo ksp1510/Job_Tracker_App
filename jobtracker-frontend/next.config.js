@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /** @type {import('next').NextConfig} */
+
+const path = require("path");
+
 const nextConfig = {
   // ------------------------------------------------------
   // Image Optimization (allow EC2 IP + domains)
@@ -64,6 +68,11 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   generateEtags: false, // better compatibility behind CloudFront
+
+  webpack: (config) => {
+    config.resolve.alias['@'] = path.join(__dirname, 'src');
+    return config;
+  },
 };
 
 module.exports = nextConfig;
