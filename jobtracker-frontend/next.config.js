@@ -64,6 +64,11 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   generateEtags: false, // better compatibility behind CloudFront
+
+  webpack: (config) => {
+    config.resolve.alias['@'] = path.join(__dirname, 'src');
+    return config;
+  },
 };
 
 module.exports = nextConfig;
