@@ -104,19 +104,21 @@ export default function JobSearchPage() {
 
       // Use cache if query and location match
       if (
-        hasCached &&
-        lastQuery === (searchParams.query?.trim() || "") &&
-        lastLocation === (searchParams.location?.trim() || "")
-      ) {
-        console.log("✅ Using cached results");
-        const cached = await apiClient.getCachedResults(
-          searchParams.page ?? 0,
-          searchParams.size ?? ITEMS_PER_PAGE,
-          searchParams.query,
-          searchParams.location
-        );
-        if (cached) return cached;
-      }
+          hasCached &&
+          searchParams.page === 0 &&
+          lastQuery === (searchParams.query?.trim() || "") &&
+          lastLocation === (searchParams.location?.trim() || "")
+        ) {
+          console.log("Using cached PAGE 0 only");
+          const cached = await apiClient.getCachedResults(
+            0,
+            searchParams.size,
+            searchParams.query,
+            searchParams.location
+          );
+          if (cached) return cached;
+        }
+
 
       console.log("🔍 Fetching new results from backend");
       const fresh = await apiClient.searchJobs(searchParams);
