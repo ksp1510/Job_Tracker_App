@@ -7,16 +7,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FileRepository extends MongoRepository<Files, String> {
-    List<Files> findByApplicationIdAndType(String applicationId, String type);
-
-    Optional<Files> findById(String id);
-
-    List<Files> findByApplicationId(String applicationId);
-
-    void deleteByApplicationIdAndType(String applicationId, String type);
 
     List<Files> findByUserId(String userId);
 
+    Optional<Files> findById(String fileId);
 
+    List<Files> findByApplicationId(String applicationId);
+
+    // ===== NEW METHODS =====
+
+    List<Files> findByUserIdAndReusableTrueOrderByUploadedAtDesc(String userId);
+
+    List<Files> findByUserIdAndTypeAndReusableTrueOrderByUploadedAtDesc(String userId, String type);
+
+    Optional<Files> findTopByUserIdAndTypeAndReusableTrueOrderByVersionDesc(String userId, String type);
 }
-
