@@ -2,13 +2,18 @@ package com.jobtracker;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import com.jobtracker.config.OpenAiProperties;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @SpringBootApplication(scanBasePackages = "com.jobtracker")
+@EnableConfigurationProperties(OpenAiProperties.class)
+
 @EnableScheduling
 public class JobtrackerBackendApplication {
 
