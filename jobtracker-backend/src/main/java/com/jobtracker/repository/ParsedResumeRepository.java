@@ -14,4 +14,5 @@ public interface ParsedResumeRepository extends MongoRepository<ParsedResume, St
     );
 
     Optional<ParsedResume> findTopByUserIdAndFileIdOrderByParsedAtDesc(String userId, String fileId);
+
 }

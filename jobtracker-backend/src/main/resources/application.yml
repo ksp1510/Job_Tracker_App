@@ -33,12 +33,19 @@ aws:
     bucket: ${AWS_S3_BUCKET}
   ses:
     fromEmail: ${AWS_SES_FROM_EMAIL}
+resume:
+  parser:
+    version: v1   # default stays v1 everywhere unless overridden
+    maxRawChars: 12000
+    previewChars: 800
 
 openai:
-  api-key: ${OPENAI_API_KEY:}
-  base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+  enabled: true
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com}
   model: ${OPENAI_MODEL:gpt-5-mini}
   timeout-ms: ${OPENAI_TIMEOUT_MS:60000}
+  api:
+    key: ${OPENAI_API_KEY}
 
 auth0:
   domain: ${AUTH0_DOMAIN}
