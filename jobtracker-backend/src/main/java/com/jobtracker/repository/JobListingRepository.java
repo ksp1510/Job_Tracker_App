@@ -12,9 +12,8 @@ import java.util.List;
 
 public interface JobListingRepository extends MongoRepository<JobListing, String> {
     
-    List<JobListing> findByIsActiveTrue(Pageable pageable);
+    Page<JobListing> findByIsActiveTrue(Pageable pageable);
     Page<JobListing> findByIsActiveTrueAndTitleContainingIgnoreCase(String title, Pageable pageable);
-    List<JobListing> findByIsActiveTrueOrderByPostedDateDesc(Pageable pageable);
     Page<JobListing> findByIsActiveTrueAndLocationContainingIgnoreCase(String location, Pageable pageable);
     Page<JobListing> findByIsActiveTrueAndTitleContainingIgnoreCaseAndLocationContainingIgnoreCase(String title, String location, Pageable pageable);
     List<JobListing> findByIsActiveTrueAndLocationNear(Point location, Distance distance);
