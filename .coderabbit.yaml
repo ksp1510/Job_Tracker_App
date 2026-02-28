@@ -1,0 +1,130 @@
+# .coderabbit.yaml
+# Repo: Job_Tracker
+# - ai-microservices (Python/FastAPI style microservice)
+# - jobtracker-backend (Java/Spring Boot via Maven)
+# - jobtracker-frontend (Next.js + TS + Tailwind)
+
+version: 1
+
+reviews:
+  auto_review:
+    enabled: true
+    on_pull_request: true
+    on_push: true
+
+  review_level: "detailed"
+  summary:
+    enabled: true
+  suggestions:
+    enabled: true
+
+  ignore:
+    # Frontend build/deps
+    - "jobtracker-frontend/node_modules/**"
+    - "jobtracker-frontend/.next/**"
+    - "jobtracker-frontend/out/**"
+    - "jobtracker-frontend/.turbo/**"
+    - "jobtracker-frontend/coverage/**"
+    - "jobtracker-frontend/**/*.map"
+
+    # Backend build output/logs
+    - "jobtracker-backend/target/**"
+    - "jobtracker-backend/**/*.log"
+
+    # Python venv + caches
+    - "**/venv/**"
+    - "**/.venv/**"
+    - "**/__pycache__/**"
+    - "**/.pytest_cache/**"
+    - "**/.mypy_cache/**"
+
+    # IDE/editor noise
+    - "**/.idea/**"
+    - "**/.vscode/**"
+
+    # Lockfiles (usually not worth line-by-line review)
+    - "**/package-lock.json"
+    - "**/pnpm-lock.yaml"
+    - "**/yarn.lock"
+
+    # Large binaries
+    - "**/*.png"
+    - "**/*.jpg"
+    - "**/*.jpeg"
+    - "**/*.gif"
+    - "**/*.svg"
+    - "**/*.webp"
+    - "**/*.pdf"
+
+instructions:
+  general:
+    - "Prioritize correctness, security, and maintainability over stylistic nitpicks."
+    - "Flag breaking changes, missing validation, risky defaults, and unclear naming."
+    - "If recommending changes, include concrete code snippets or exact files/lines to edit."
+    - "Prefer minimal changes that reduce complexity."
+
+  frontend_nextjs:
+    - "Prefer Server Components where appropriate; keep client components minimal."
+    - "Validate all user input; do not trust query params, cookies, or headers."
+    - "Avoid leaking secrets to the client; verify env var usage (NEXT_PUBLIC vs server-only)."
+    - "Check for React performance issues: unnecessary re-renders, heavy client bundles."
+    - "Ensure accessibility: labels, aria attributes, keyboard navigation."
+    - "Tailwind: avoid overly complex class chains; suggest reusable components when repeated."
+
+  backend_spring_boot:
+    - "Ensure REST endpoints use correct status codes and consistent error responses."
+    - "Validate request DTOs (Jakarta Validation) and sanitize inputs."
+    - "Watch for security issues: auth assumptions, CORS, SSRF, file upload risks, deserialization."
+    - "Prefer service-layer logic; keep controllers thin."
+    - "Flag missing tests for new logic (JUnit/MockMvc)."
+    - "Watch for N+1 queries / inefficient DB access patterns if persistence is used."
+    - "Check configuration: secrets not committed, profiles correct, logging not leaking PII."
+
+  ai_microservices_python:
+    - "Use Pydantic models for request/response; validate inputs and types."
+    - "Consistent HTTPException usage; meaningful status codes."
+    - "Avoid blocking calls in async endpoints; use proper async libraries."
+    - "Validate file uploads for size/type and prevent path traversal."
+    - "Keep requirements pinned if deployment stability matters."
+
+output:
+  format: "markdown"
+  bullets: true
+  include_file_paths: true
+
+# Restrict review scope to real source/config, not build artifacts
+path_filters:
+  include:
+    - "ai-microservices/**"
+    - "jobtracker-backend/src/**"
+    - "jobtracker-backend/pom.xml"
+    - "jobtracker-backend/mvnw"
+    - "jobtracker-backend/mvnw.cmd"
+    - "jobtracker-frontend/src/**"
+    - "jobtracker-frontend/public/**"
+    - "jobtracker-frontend/package.json"
+    - "jobtracker-frontend/next.config.js"
+    - "jobtracker-frontend/tsconfig.json"
+    - "jobtracker-frontend/tailwind.config.js"
+    - "jobtracker-frontend/postcss.config.mjs"
+    - "*.md"
+    - "*.json"
+    - "SECURITY.md"
+    - "TESTING.md"
+  exclude:
+    - "ai-microservices/venv/**"
+    - "jobtracker-backend/target/**"
+    - "jobtracker-frontend/node_modules/**"
+    - "jobtracker-frontend/.next/**"
+
+quality_gates:
+  # Encourage tests when changing core logic
+  require_tests_for:
+    - "jobtracker-backend/src/**"
+    - "ai-microservices/app/**"
+    - "jobtracker-frontend/src/**"
+  exempt_tests_for:
+    - "**/*.md"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/*.json"
