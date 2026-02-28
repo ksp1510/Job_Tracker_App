@@ -363,7 +363,7 @@ public class JobSearchService {
                 location.trim(), pageable);
         }
         
-        return jobListingRepository.findByIsActiveTrue(pageable);
+        return (Page<JobListing>) jobListingRepository.findByIsActiveTrue(pageable);
     }
 
     private Point geocodeLocation(String location) {
